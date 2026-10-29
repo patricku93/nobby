@@ -20,8 +20,11 @@ data class FoundEvent(val id: Long, val title: String, val startMillis: Long)
 interface CalendarSource {
     suspend fun listWritable(): List<DeviceCalendar>
     suspend fun insert(calendarId: Long, entry: CalendarEntry, zone: TimeZone): Long
-    suspend fun update(providerId: Long, entry: CalendarEntry, zone: TimeZone)
+    /** Returns the number of rows updated (0 when the provider event no longer exists). */
+    suspend fun update(providerId: Long, entry: CalendarEntry, zone: TimeZone): Int
     suspend fun delete(providerId: Long): Boolean
+    /** True when [providerId] is a live event in [calendarId] whose description carries NoBby's `nobby:` marker. */
+    suspend fun isOwnEvent(providerId: Long, calendarId: Long): Boolean
     suspend fun search(calendarId: Long, pattern: Regex, fromMillis: Long, toMillis: Long): List<FoundEvent>
 }
 
@@ -50,9 +53,18 @@ class DeviceCalendarSource @Inject constructor(@ApplicationContext private val c
         }
     }
 
-    override suspend fun update(providerId: Long, entry: CalendarEntry, zone: TimeZone) = withContext(Dispatchers.IO) {
+    override suspend fun update(providerId: Long, entry: CalendarEntry, zone: TimeZone): Int = withContext(Dispatchers.IO) {
         resolver.update(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, providerId), values(entry, zone), null, null)
-        Unit
+    }
+
+    override suspend fun isOwnEvent(providerId: Long, calendarId: Long): Boolean = withContext(Dispatchers.IO) {
+        val projection = arrayOf(CalendarContract.Events.DESCRIPTION, CalendarContract.Events.CALENDAR_ID, CalendarContract.Events.DELETED)
+        resolver.query(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, providerId), projection, null, null, null)?.use { c ->
+            c.moveToFirst() &&
+                c.getString(0).orEmpty().startsWith(CalendarEntry.MARKER_PREFIX) &&
+                c.getLong(1) == calendarId &&
+                c.getInt(2) == 0
+        } ?: false
     }
 
     override suspend fun delete(providerId: Long): Boolean = withContext(Dispatchers.IO) {

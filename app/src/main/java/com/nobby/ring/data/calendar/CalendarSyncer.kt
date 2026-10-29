@@ -61,15 +61,20 @@ class CalendarSyncer @Inject constructor(
             val diff = CalendarDiff.compute(desired, links)
 
             // Persist each link right after its provider write so a mid-sync failure never orphans an event.
+            // A linked provider id is only written to while it is still NoBby's own event in the chosen calendar:
+            // provider ids can be reused or the event edited elsewhere, and we must never touch a user's event.
             diff.delete.forEach {
-                source.delete(it.providerEventId)
+                if (source.isOwnEvent(it.providerEventId, calendarId)) source.delete(it.providerEventId)
                 linkDao.delete(listOf(it.eventId))
             }
             // NonCancellable: a REPLACE-cancelled worker must not leave a provider write without its link.
             diff.update.forEach { (link, entry) ->
                 withContext(NonCancellable) {
-                    source.update(link.providerEventId, entry, clock.zone)
-                    linkDao.upsert(listOf(CalendarLinkEntity(entry.eventId, link.providerEventId, entry.startAt.toString(), entry.title)))
+                    val updated = source.isOwnEvent(link.providerEventId, calendarId) &&
+                        source.update(link.providerEventId, entry, clock.zone) > 0
+                    // Not ours any more, or gone (0 rows): drop the stale link by re-creating the event and relinking.
+                    val providerId = if (updated) link.providerEventId else source.insert(calendarId, entry, clock.zone)
+                    linkDao.upsert(listOf(CalendarLinkEntity(entry.eventId, providerId, entry.startAt.toString(), entry.title)))
                 }
             }
             diff.create.forEach { entry ->
@@ -111,9 +116,11 @@ class CalendarSyncer @Inject constructor(
     }
 
     private suspend fun deleteLinkedEventsLocked() {
+        // Links are always into the stored calendar; without one we cannot verify ownership, so nothing is deleted.
+        val calendarId = syncStore.calendarId.first()
         linkDao.allOnce().forEach {
             try {
-                source.delete(it.providerEventId)
+                if (calendarId != null && source.isOwnEvent(it.providerEventId, calendarId)) source.delete(it.providerEventId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

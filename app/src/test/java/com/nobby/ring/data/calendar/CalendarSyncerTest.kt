@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.nobby.ring.data.db.CalendarLinkDao
+import com.nobby.ring.data.db.CalendarLinkEntity
 import com.nobby.ring.data.db.NobbyDatabase
 import com.nobby.ring.data.prefs.CalendarSyncStore
 import com.nobby.ring.data.prefs.MethodConfigStore
@@ -19,6 +20,8 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,7 +33,12 @@ class FakeCalendarSource : CalendarSource {
     private var nextId = 100L
     override suspend fun listWritable() = listOf(DeviceCalendar(1, "Test", "test@example.com", 0))
     override suspend fun insert(calendarId: Long, entry: CalendarEntry, zone: TimeZone): Long { val id = nextId++; events[id] = entry; return id }
-    override suspend fun update(providerId: Long, entry: CalendarEntry, zone: TimeZone) { events[providerId] = entry }
+    override suspend fun update(providerId: Long, entry: CalendarEntry, zone: TimeZone): Int {
+        if (providerId !in events) return 0
+        events[providerId] = entry
+        return 1
+    }
+    override suspend fun isOwnEvent(providerId: Long, calendarId: Long): Boolean = providerId in events
     override suspend fun delete(providerId: Long): Boolean = events.remove(providerId) != null
     override suspend fun search(calendarId: Long, pattern: Regex, fromMillis: Long, toMillis: Long) =
         events.filter { pattern.containsMatchIn(it.value.title) }.map { FoundEvent(it.key, it.value.title, 0L) }
@@ -104,5 +112,20 @@ class CalendarSyncerTest {
         assertEquals(0, source.events.size)
         assertEquals(0, linkDao.allOnce().size)
         assertEquals(true, syncStore.enabled.first())
+    }
+
+    @Test
+    fun `a link to a provider event that is not ours is dropped and the event re-created`() = runTest {
+        syncer.syncNow()
+        val link = linkDao.allOnce().first()
+        // The provider event vanished (or the id now belongs to someone else's event) and the schedule moved.
+        source.delete(link.providerEventId)
+        linkDao.upsert(listOf(CalendarLinkEntity(link.eventId, 999L, "2026-01-01T00:00", link.title)))
+        assertEquals(1, syncer.syncNow().getOrThrow())
+        val relinked = linkDao.allOnce().single { it.eventId == link.eventId }
+        assertNotEquals(999L, relinked.providerEventId)
+        assertTrue(relinked.providerEventId in source.events)
+        assertEquals(4, source.events.size)
+        assertEquals(4, linkDao.allOnce().size)
     }
 }
