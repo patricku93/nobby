@@ -13,10 +13,12 @@ import com.nobby.ring.data.calendar.CalendarSyncer
 import com.nobby.ring.data.calendar.DeviceCalendar
 import com.nobby.ring.data.calendar.FoundEvent
 import com.nobby.ring.data.prefs.CalendarSyncStore
+import com.nobby.ring.di.ApplicationScope
 import com.nobby.ring.domain.NobbyClock
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -52,6 +54,7 @@ class CalendarSettingsViewModel @Inject constructor(
     private val syncer: CalendarSyncer,
     private val store: CalendarSyncStore,
     private val clock: NobbyClock,
+    @ApplicationScope private val appScope: CoroutineScope,
 ) : ViewModel() {
     private val local = MutableStateFlow(
         CalendarSettingsUiState(from = clock.now().date, to = LocalDate(clock.now().year + 1, clock.now().monthNumber, 1), permissionGranted = hasPermission()),
@@ -74,30 +77,48 @@ class CalendarSettingsViewModel @Inject constructor(
         }
     }
 
-    fun setEnabled(enabled: Boolean) = viewModelScope.launch {
-        if (!enabled) {
-            syncer.disconnect()
-        } else {
-            store.save(true, uiState.value.selectedId ?: uiState.value.calendars.firstOrNull()?.id)
-            syncNow().join()
+    // Provider writes run on the application scope so leaving the screen cannot stop them half-way.
+    fun setEnabled(enabled: Boolean) = appScope.launch {
+        guarded("Calendar enable/disable failed") {
+            if (!enabled) {
+                syncer.disconnect()
+            } else {
+                store.save(true, uiState.value.selectedId ?: uiState.value.calendars.firstOrNull()?.id)
+                runSync()
+            }
         }
     }
 
-    fun select(id: Long) = viewModelScope.launch {
-        val previous = uiState.value.selectedId
-        // Events already written to the previous calendar must be removed before switching (store stays enabled).
-        if (previous != null && previous != id) syncer.clearLinks()
-        store.save(true, id)
-        syncNow().join()
+    fun select(id: Long) = appScope.launch {
+        guarded("Calendar selection failed") {
+            val previous = uiState.value.selectedId
+            // Events already written to the previous calendar must be removed before switching (store stays enabled).
+            if (previous != null && previous != id) syncer.clearLinks()
+            store.save(true, id)
+            runSync()
+        }
     }
 
-    fun syncNow() = viewModelScope.launch {
+    fun syncNow() = viewModelScope.launch { runSync() }
+
+    private suspend fun runSync() {
         syncer.syncNow()
             .onSuccess { local.update { it.copy(error = null) } }
             .onFailure { e ->
                 Log.e("NoBby", "Calendar sync failed", e)
                 local.update { it.copy(error = e.message) }
             }
+    }
+
+    private suspend fun guarded(label: String, block: suspend () -> Unit) {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("NoBby", label, e)
+            local.update { it.copy(error = e.message) }
+        }
     }
 
     fun setQuery(q: String) = local.update { it.copy(query = q) }
@@ -125,7 +146,7 @@ class CalendarSettingsViewModel @Inject constructor(
         it.copy(selectedResults = if (it.selectedResults == all) emptySet() else all)
     }
 
-    fun deleteSelected() = viewModelScope.launch {
+    fun deleteSelected() = appScope.launch {
         val ids = uiState.value.selectedResults
         val succeeded = ids.filter { id ->
             try {

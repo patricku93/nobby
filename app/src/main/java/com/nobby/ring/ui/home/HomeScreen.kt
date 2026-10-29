@@ -33,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobby.ring.R
 import com.nobby.ring.domain.model.ScheduleState
@@ -46,6 +47,11 @@ import kotlin.math.abs
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
+    val exactAlarmsAllowed by viewModel.exactAlarmsAllowed.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshPermissions()
+        onPauseOrDispose {}
+    }
     val state = ui.state ?: return
 
     ui.pendingConfirm?.let {
@@ -69,7 +75,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-            if (!viewModel.exactAlarmsAllowed) ExactAlarmBanner()
+            if (!exactAlarmsAllowed) ExactAlarmBanner()
             PhaseChip(state)
             Countdown(state)
             NextCard(state, ui.busy, viewModel::onDoneTapped)

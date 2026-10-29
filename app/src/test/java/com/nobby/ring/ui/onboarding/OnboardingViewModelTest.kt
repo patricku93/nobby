@@ -10,6 +10,9 @@ import com.nobby.ring.data.prefs.ThemeStore
 import com.nobby.ring.data.repo.ReminderRepository
 import com.nobby.ring.domain.NobbyClock
 import com.nobby.ring.domain.model.Palette
+import com.nobby.ring.notifications.ScheduleChangeListener
+import com.nobby.ring.notifications.ScheduleChangeNotifier
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -38,6 +41,10 @@ class OnboardingViewModelTest {
     private lateinit var themeStore: ThemeStore
     private lateinit var reminders: ReminderRepository
     private lateinit var db: NobbyDatabase
+    @Volatile private var changes = 0
+    private val notifier = ScheduleChangeNotifier(setOf(object : ScheduleChangeListener {
+        override suspend fun onScheduleChanged() { changes++ }
+    }))
     private val clock = object : NobbyClock {
         override fun now() = LocalDateTime(2026, 11, 5, 10, 0)
         override val zone = TimeZone.UTC
@@ -58,7 +65,7 @@ class OnboardingViewModelTest {
 
     @Test
     fun `finish saves config, default reminders, theme and marks onboarding done`() = runTest(dispatcher) {
-        val vm = OnboardingViewModel(configStore, reminders, themeStore, clock)
+        val vm = OnboardingViewModel(configStore, reminders, themeStore, notifier, CoroutineScope(dispatcher), clock)
         vm.setWear(21); vm.setPause(7); vm.setTime(LocalTime(21, 0))
         vm.setAnchorDate(LocalDate(2026, 11, 1)); vm.setAnchorTime(LocalTime(21, 0))
         vm.setPalette(Palette.MINT)
@@ -73,11 +80,12 @@ class OnboardingViewModelTest {
         assertEquals(2, reminders.rules.first().size)
         assertEquals(Palette.MINT, themeStore.theme.first().palette)
         assertTrue(vm.state.value.finished)
+        assertEquals(1, changes) // the schedule is armed (reminders, widget, calendar) right after onboarding
     }
 
     @Test
     fun `warnings appear above safety thresholds`() {
-        val vm = OnboardingViewModel(configStore, reminders, themeStore, clock)
+        val vm = OnboardingViewModel(configStore, reminders, themeStore, notifier, CoroutineScope(dispatcher), clock)
         vm.setWear(30); vm.setPause(9)
         assertTrue(vm.state.value.wearWarning)
         assertTrue(vm.state.value.pauseWarning)

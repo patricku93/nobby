@@ -16,9 +16,11 @@ import com.nobby.ring.data.repo.ScheduleRepository
 import com.nobby.ring.domain.NobbyClock
 import com.nobby.ring.domain.engine.ReminderPlanner
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toInstant
 import javax.inject.Inject
@@ -50,32 +52,36 @@ class ReminderScheduler @Inject constructor(
      * when it already targets the same overdue event (so a snooze survives a reschedule). Safe to call repeatedly.
      */
     suspend fun rescheduleAll() = mutex.withLock {
-        cancelTracked()
+        // Read and plan first (cancellable); then cancel + arm + persist as one non-cancellable step so a cancelled
+        // caller can never leave the old alarms cancelled without the new ones armed and tracked.
         val state = schedule.currentState()
-        if (state == null || state.overdue == null) notifier.cancelOverdue()
-        if (state == null) {
-            dataStore.edit { it.remove(trackedKey) }
-            cancelOverdueAlarm()
-            return@withLock
-        }
         val now = clock.now()
-        val eventsById = state.events.associateBy { it.id }
-        val tracked = mutableSetOf<String>()
-
-        ReminderPlanner.plan(reminders.rulesOnce(), state.events, state.logs, now).forEach { r ->
-            val plannedAt = eventsById[r.eventId]?.plannedAt ?: return@forEach
-            val code = (r.fireAt.hashCode() * 31) xor r.ruleId.toInt()
-            val intent = Intent(context, AlarmReceiver::class.java)
-                .setAction(AlarmReceiver.ACTION_REMINDER)
-                .putExtra(AlarmReceiver.EXTRA_EVENT_ID, r.eventId)
-                .putExtra(AlarmReceiver.EXTRA_KIND, r.kind.name)
-                .putExtra(AlarmReceiver.EXTRA_PLANNED_AT, plannedAt.toString())
-                .putExtra(AlarmReceiver.EXTRA_IMPORTANCE, r.importance.name)
-            setAt(code, intent, r.fireAt.toInstant(clock.zone).toEpochMilliseconds())
-            tracked += trackingEntry(AlarmReceiver.ACTION_REMINDER, code)
+        val planned = if (state == null) emptyList() else ReminderPlanner.plan(reminders.rulesOnce(), state.events, state.logs, now)
+        withContext(NonCancellable) {
+            cancelTracked()
+            if (state == null || state.overdue == null) notifier.cancelOverdue()
+            if (state == null) {
+                dataStore.edit { it.remove(trackedKey) }
+                cancelOverdueAlarm()
+                return@withContext
+            }
+            val eventsById = state.events.associateBy { it.id }
+            val tracked = mutableSetOf<String>()
+            planned.forEach { r ->
+                val plannedAt = eventsById[r.eventId]?.plannedAt ?: return@forEach
+                val code = (r.fireAt.hashCode() * 31) xor r.ruleId.toInt()
+                val intent = Intent(context, AlarmReceiver::class.java)
+                    .setAction(AlarmReceiver.ACTION_REMINDER)
+                    .putExtra(AlarmReceiver.EXTRA_EVENT_ID, r.eventId)
+                    .putExtra(AlarmReceiver.EXTRA_KIND, r.kind.name)
+                    .putExtra(AlarmReceiver.EXTRA_PLANNED_AT, plannedAt.toString())
+                    .putExtra(AlarmReceiver.EXTRA_IMPORTANCE, r.importance.name)
+                setAt(code, intent, r.fireAt.toInstant(clock.zone).toEpochMilliseconds())
+                tracked += trackingEntry(AlarmReceiver.ACTION_REMINDER, code)
+            }
+            dataStore.edit { it[trackedKey] = tracked }
+            syncOverdueAlarm(state.nextEvent?.let { it.id to it.plannedAt }, now)
         }
-        dataStore.edit { it[trackedKey] = tracked }
-        syncOverdueAlarm(state.nextEvent?.let { it.id to it.plannedAt }, now)
     }
 
     /** Re-arms the single overdue alarm [hours] from now (used for the repeat nag and for snooze). */
@@ -84,9 +90,6 @@ class ReminderScheduler @Inject constructor(
         setAt(OVERDUE_CODE, overdueIntent(eventId), at.toEpochMilliseconds())
         dataStore.edit { it[overdueArmedKey] = eventId }
     }
-
-    /** Cancels the armed overdue alarm (if any) and forgets its event id. */
-    suspend fun clearOverdueAlarm() = mutex.withLock { cancelOverdueAlarm() }
 
     suspend fun repeatIntervalHours(): Int = overdueConfig.config.first().repeatEveryHours
 

@@ -18,6 +18,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
 
 @Module
@@ -37,4 +40,7 @@ object AppModule {
     @Provides fun calendarLinkDao(db: NobbyDatabase): CalendarLinkDao = db.calendarLinkDao()
 
     @Provides @Singleton fun clock(): NobbyClock = SystemClock()
+
+    @Provides @Singleton @ApplicationScope
+    fun applicationScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 }

@@ -16,6 +16,7 @@ import com.nobby.ring.domain.model.Method
 import com.nobby.ring.domain.model.ScheduleConfig
 import com.nobby.ring.notifications.ScheduleChangeListener
 import com.nobby.ring.notifications.ScheduleChangeNotifier
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -58,6 +59,7 @@ class SettingsViewModelTest {
         vm = SettingsViewModel(
             schedule, ReminderRepository(db.reminderRuleDao()), ThemeStore(ds), WidgetConfigStore(ds), OverdueConfigStore(ds),
             ScheduleChangeNotifier(setOf(object : ScheduleChangeListener { override suspend fun onScheduleChanged() { changes++ } })),
+            CoroutineScope(dispatcher),
         )
     }
 

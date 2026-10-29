@@ -41,7 +41,9 @@ class HomeViewModel @Inject constructor(
     private val notifier: ScheduleChangeNotifier,
     private val scheduler: ReminderScheduler,
 ) : ViewModel() {
-    val exactAlarmsAllowed: Boolean get() = scheduler.canScheduleExact()
+    private val _exactAlarmsAllowed = MutableStateFlow(scheduler.canScheduleExact())
+    /** Refreshed by [refreshPermissions] on every resume: the user may grant the permission in system settings. */
+    val exactAlarmsAllowed: StateFlow<Boolean> = _exactAlarmsAllowed
 
     private val pending = MutableStateFlow<PendingConfirm?>(null)
 
@@ -49,6 +51,10 @@ class HomeViewModel @Inject constructor(
 
     val uiState: StateFlow<HomeUiState> = combine(repo.state, pending, committing) { s, p, c -> HomeUiState(s, p, c) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
+
+    fun refreshPermissions() {
+        _exactAlarmsAllowed.value = scheduler.canScheduleExact()
+    }
 
     fun onDoneTapped() {
         if (committing.value) return

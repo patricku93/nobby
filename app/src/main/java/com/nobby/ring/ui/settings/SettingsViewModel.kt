@@ -8,6 +8,7 @@ import com.nobby.ring.data.prefs.ThemeStore
 import com.nobby.ring.data.prefs.WidgetConfigStore
 import com.nobby.ring.data.repo.ReminderRepository
 import com.nobby.ring.data.repo.ScheduleRepository
+import com.nobby.ring.di.ApplicationScope
 import com.nobby.ring.domain.engine.ScheduleEngine
 import com.nobby.ring.domain.model.Method
 import com.nobby.ring.domain.model.OverdueConfig
@@ -20,6 +21,8 @@ import com.nobby.ring.domain.model.WidgetConfig
 import com.nobby.ring.notifications.ScheduleChangeNotifier
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -55,6 +58,7 @@ class SettingsViewModel @Inject constructor(
     private val widgetStore: WidgetConfigStore,
     private val overdueStore: OverdueConfigStore,
     private val notifier: ScheduleChangeNotifier,
+    @ApplicationScope private val appScope: CoroutineScope,
 ) : ViewModel() {
     val schedule: StateFlow<ScheduleState?> = scheduleRepo.state.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val theme: StateFlow<ThemeSpec> = themeStore.theme.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeSpec())
@@ -65,11 +69,11 @@ class SettingsViewModel @Inject constructor(
     private val _draft = MutableStateFlow<ScheduleDraft?>(null)
     val draft: StateFlow<ScheduleDraft?> = _draft
 
-    fun setTheme(theme: ThemeSpec) = viewModelScope.launch { themeStore.save(theme); notifier.notifyChanged() }
-    fun setWidget(config: WidgetConfig) = viewModelScope.launch { widgetStore.save(config); notifier.notifyChanged() }
-    fun setOverdue(config: OverdueConfig) = viewModelScope.launch { overdueStore.save(config); notifier.notifyChanged() }
-    fun saveRule(rule: ReminderRule) = viewModelScope.launch { reminders.upsert(rule); notifier.notifyChanged() }
-    fun deleteRule(id: Long) = viewModelScope.launch { reminders.delete(id); notifier.notifyChanged() }
+    fun setTheme(theme: ThemeSpec) = persist("saving theme") { themeStore.save(theme) }
+    fun setWidget(config: WidgetConfig) = persist("saving widget config") { widgetStore.save(config) }
+    fun setOverdue(config: OverdueConfig) = persist("saving overdue config") { overdueStore.save(config) }
+    fun saveRule(rule: ReminderRule) = persist("saving reminder rule") { reminders.upsert(rule) }
+    fun deleteRule(id: Long) = persist("deleting reminder rule") { reminders.delete(id) }
 
     fun startScheduleDraft() = viewModelScope.launch {
         val config = scheduleRepo.currentState()?.config ?: return@launch
@@ -78,18 +82,28 @@ class SettingsViewModel @Inject constructor(
 
     fun updateDraft(transform: (ScheduleDraft) -> ScheduleDraft) = _draft.update { it?.let(transform) }
 
-    fun applyDraft() = viewModelScope.launch {
-        val d = _draft.value ?: return@launch
-        try {
+    fun applyDraft(): Job? {
+        val d = _draft.value ?: return null
+        return persist("applying schedule draft") {
             scheduleRepo.updateConfig(d.toConfig())
             _draft.value = null
-            notifier.notifyChanged()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.e("NoBby", "applying schedule draft failed", e)
         }
     }
 
     fun discardDraft() { _draft.value = null }
+
+    /**
+     * Runs [write] and then re-plans on the application scope, so leaving the screen right after tapping
+     * cannot cancel a write half-way or skip the re-planning.
+     */
+    private fun persist(label: String, write: suspend () -> Unit): Job = appScope.launch {
+        try {
+            write()
+            notifier.notifyChanged()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("NoBby", "$label failed", e)
+        }
+    }
 }

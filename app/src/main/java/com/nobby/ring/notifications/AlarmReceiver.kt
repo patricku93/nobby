@@ -7,6 +7,7 @@ import android.util.Log
 import com.nobby.ring.data.repo.ScheduleRepository
 import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.Importance
+import com.nobby.ring.widget.WidgetUpdater
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -20,6 +21,7 @@ class AlarmReceiver : BroadcastReceiver() {
     @Inject lateinit var notifier: Notifier
     @Inject lateinit var schedule: ScheduleRepository
     @Inject lateinit var scheduler: ReminderScheduler
+    @Inject lateinit var widgetUpdater: WidgetUpdater
 
     override fun onReceive(context: Context, intent: Intent) {
         val result = goAsync()
@@ -49,13 +51,19 @@ class AlarmReceiver : BroadcastReceiver() {
         val state = schedule.currentState() ?: return
         val overdue = state.overdue
         if (overdue == null) {
-            // Not (or no longer) overdue: clear the nag and do not re-arm; rescheduleAll re-arms for the next event.
+            // Not (or no longer) overdue, e.g. the alarm fired early after a clock change: re-plan from the current
+            // state, which clears the nag and re-arms the overdue alarm for the next event.
             notifier.cancelOverdue()
-            scheduler.clearOverdueAlarm()
+            scheduler.rescheduleAll()
             return
         }
         notifier.showOverdue(overdue.event.kind, overdue.event.plannedAt, overdue.event.id, overdue.safetyBreached)
         scheduler.armOverdueIn(scheduler.repeatIntervalHours(), overdue.event.id)
+        // The widget only refreshes daily on its own; show the overdue state as soon as it begins.
+        runCatching { widgetUpdater.updateAll() }.onFailure { e ->
+            if (e is CancellationException) throw e
+            Log.e("NoBby", "widget update after overdue failed", e)
+        }
     }
 
     companion object {

@@ -1,18 +1,20 @@
 package com.nobby.ring.ui.onboarding
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.nobby.ring.data.prefs.MethodConfigStore
 import com.nobby.ring.data.prefs.ThemeStore
 import com.nobby.ring.data.repo.ReminderRepository
+import com.nobby.ring.di.ApplicationScope
 import com.nobby.ring.domain.NobbyClock
 import com.nobby.ring.domain.model.Method
 import com.nobby.ring.domain.model.Palette
 import com.nobby.ring.domain.model.ReminderRule
 import com.nobby.ring.domain.model.ScheduleConfig
 import com.nobby.ring.domain.model.ThemeSpec
+import com.nobby.ring.notifications.ScheduleChangeNotifier
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -43,6 +45,8 @@ class OnboardingViewModel @Inject constructor(
     private val configStore: MethodConfigStore,
     private val reminders: ReminderRepository,
     private val themeStore: ThemeStore,
+    private val notifier: ScheduleChangeNotifier,
+    @ApplicationScope private val appScope: CoroutineScope,
     clock: NobbyClock,
 ) : ViewModel() {
     private val _state = MutableStateFlow(OnboardingState(anchorDate = clock.now().date))
@@ -61,12 +65,14 @@ class OnboardingViewModel @Inject constructor(
         val s = _state.value
         if (s.saving || s.finished) return
         _state.update { it.copy(saving = true) }
-        viewModelScope.launch {
+        // App scope: the writes and the first re-planning must complete even if the screen goes away mid-save.
+        appScope.launch {
             runCatching {
                 configStore.save(ScheduleConfig(Method.ring(s.wearDays, s.pauseDays, s.timeOfDay), LocalDateTime(s.anchorDate, s.anchorTime)))
                 reminders.replaceAll(ReminderRule.defaults(s.timeOfDay))
                 themeStore.save(ThemeSpec(palette = s.palette))
                 configStore.setOnboardingDone()
+                notifier.notifyChanged() // arm reminders, overdue alarm, widget and calendar for the new schedule
             }.onSuccess {
                 _state.update { it.copy(finished = true) }
             }.onFailure {
