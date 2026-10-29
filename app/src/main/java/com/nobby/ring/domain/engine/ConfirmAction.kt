@@ -1,5 +1,6 @@
 package com.nobby.ring.domain.engine
 
+import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.EventLog
 import com.nobby.ring.domain.model.ScheduleConfig
 import com.nobby.ring.domain.model.ScheduledEvent
@@ -41,12 +42,20 @@ object ConfirmAction {
             policy == ShiftPolicy.SHIFT -> {
                 val delay = confirmedAt.toInstant(tz) - event.plannedAt.toInstant(tz)
                 val shifted = config.copy(anchor = (config.anchor.toInstant(tz) + delay).toLocalDateTime(tz))
-                // The shifted schedule regenerates this REMOVE under a new id; log it too so it stays confirmed.
-                val shiftedRemove = ScheduleEngine.generate(shifted).first()
-                ConfirmResult(
-                    shifted,
-                    logs + eventLog + EventLog(shiftedRemove.id, shiftedRemove.kind, shiftedRemove.plannedAt, confirmedAt),
-                )
+                // The shifted schedule regenerates this REMOVE under a new id. The log is keyed by the shifted id
+                // so the regenerated schedule sees the removal as confirmed, but it records the originally planned
+                // time so history shows one removal with planned vs actual.
+                val shiftedRemove = ScheduleEngine.generate(shifted)
+                    .firstOrNull { it.kind == EventKind.REMOVE && it.cycleIndex == 0 }
+                if (shiftedRemove == null) {
+                    // Cannot happen for a valid cycle-0 REMOVE; degrade to KEEP behaviour.
+                    ConfirmResult(config, logs + eventLog)
+                } else {
+                    ConfirmResult(
+                        shifted,
+                        logs + EventLog(shiftedRemove.id, EventKind.REMOVE, event.plannedAt, confirmedAt),
+                    )
+                }
             }
             else -> ConfirmResult(config, logs + eventLog)
         }

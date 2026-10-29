@@ -1,6 +1,7 @@
 package com.nobby.ring.domain.engine
 
 import com.nobby.ring.domain.model.EventKind
+import com.nobby.ring.domain.model.EventLog
 import com.nobby.ring.domain.model.Method
 import com.nobby.ring.domain.model.ScheduleConfig
 import kotlinx.datetime.LocalDateTime
@@ -70,5 +71,60 @@ class ConfirmActionTest {
         val r = ConfirmAction.confirm(skipConfig, swap, emptyList(), swap.plannedAt, ShiftPolicy.KEEP)
         assertFalse(r.config.skipPauseOnce)
         assertEquals(swap.plannedAt, r.config.anchor)
+    }
+
+    @Test
+    fun `remove with SHIFT logs one entry keyed by the shifted id with the original planned time`() {
+        val confirmedAt = LocalDateTime(2026, 11, 24, 21, 0)
+        val r = ConfirmAction.confirm(config, remove, emptyList(), confirmedAt, ShiftPolicy.SHIFT)
+        assertEquals(1, r.logs.size)
+        assertEquals("REMOVE@2026-11-24T21:00", r.logs[0].eventId)
+        assertEquals(LocalDateTime(2026, 11, 22, 21, 0), r.logs[0].plannedAt)
+        assertEquals(confirmedAt, r.logs[0].confirmedAt)
+        val next = OverdueCalculator.nextPending(ScheduleEngine.generate(r.config), r.logs)!!
+        assertEquals(EventKind.INSERT, next.kind)
+        assertEquals(LocalDateTime(2026, 12, 1, 21, 0), next.plannedAt)
+    }
+
+    @Test
+    fun `remove with SHIFT and sub-day delay logs a single entry`() {
+        val confirmedAt = LocalDateTime(2026, 11, 22, 23, 30)
+        val r = ConfirmAction.confirm(config, remove, emptyList(), confirmedAt, ShiftPolicy.SHIFT)
+        assertEquals(1, r.logs.size)
+        assertEquals("REMOVE@2026-11-22T21:00", r.logs[0].eventId)
+        val next = OverdueCalculator.nextPending(ScheduleEngine.generate(r.config), r.logs)!!
+        assertEquals(EventKind.INSERT, next.kind)
+        assertEquals(LocalDateTime(2026, 11, 29, 21, 0), next.plannedAt)
+    }
+
+    @Test
+    fun `remove with SHIFT and early confirmation shifts earlier`() {
+        val confirmedAt = LocalDateTime(2026, 11, 21, 21, 0)
+        val r = ConfirmAction.confirm(config, remove, emptyList(), confirmedAt, ShiftPolicy.SHIFT)
+        assertEquals(1, r.logs.size)
+        val next = OverdueCalculator.nextPending(ScheduleEngine.generate(r.config), r.logs)!!
+        assertEquals(EventKind.INSERT, next.kind)
+        assertEquals(LocalDateTime(2026, 11, 28, 21, 0), next.plannedAt)
+    }
+
+    @Test
+    fun `needsPolicyChoice boundary`() {
+        assertFalse(ConfirmAction.needsPolicyChoice(remove, LocalDateTime(2026, 11, 22, 21, 59)))
+        assertTrue(ConfirmAction.needsPolicyChoice(remove, LocalDateTime(2026, 11, 22, 22, 0)))
+        assertTrue(ConfirmAction.needsPolicyChoice(remove, LocalDateTime(2026, 11, 22, 20, 0)))
+    }
+
+    @Test
+    fun `confirm appends to existing logs`() {
+        val existing = EventLog(
+            "INSERT@2026-11-01T21:00",
+            EventKind.INSERT,
+            LocalDateTime(2026, 11, 1, 21, 0),
+            LocalDateTime(2026, 11, 1, 21, 0),
+        )
+        val r = ConfirmAction.confirm(config, remove, listOf(existing), LocalDateTime(2026, 11, 22, 21, 0), ShiftPolicy.KEEP)
+        assertEquals(2, r.logs.size)
+        assertEquals(existing, r.logs[0])
+        assertEquals(remove.id, r.logs[1].eventId)
     }
 }
