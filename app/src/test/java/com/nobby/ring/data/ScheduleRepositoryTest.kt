@@ -1,0 +1,83 @@
+package com.nobby.ring.data
+
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import com.nobby.ring.data.db.NobbyDatabase
+import com.nobby.ring.data.prefs.MethodConfigStore
+import com.nobby.ring.data.repo.ScheduleRepository
+import com.nobby.ring.domain.NobbyClock
+import com.nobby.ring.domain.engine.ShiftPolicy
+import com.nobby.ring.domain.model.EventKind
+import com.nobby.ring.domain.model.Method
+import com.nobby.ring.domain.model.ScheduleConfig
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import java.io.File
+
+@RunWith(RobolectricTestRunner::class)
+class ScheduleRepositoryTest {
+    private lateinit var db: NobbyDatabase
+    private lateinit var dataStore: DataStore<Preferences>
+    private lateinit var repo: ScheduleRepository
+    private val fixedNow = LocalDateTime(2026, 11, 22, 23, 0)
+    private val clock = object : NobbyClock {
+        override fun now() = fixedNow
+        override val zone = TimeZone.UTC
+    }
+
+    @Before
+    fun setUp() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        db = Room.inMemoryDatabaseBuilder(context, NobbyDatabase::class.java).allowMainThreadQueries().build()
+        dataStore = PreferenceDataStoreFactory.create { File(context.cacheDir, "test-${System.nanoTime()}.preferences_pb") }
+        repo = ScheduleRepository(MethodConfigStore(dataStore), db.eventLogDao(), clock)
+    }
+
+    @After fun tearDown() = db.close()
+
+    @Test
+    fun `state is null before onboarding`() = runTest {
+        assertNull(repo.state.first())
+    }
+
+    @Test
+    fun `saving config produces a state with overdue remove`() = runTest {
+        repo.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 1, 21, 0)))
+        val state = repo.state.filterNotNull().first()
+        assertEquals(EventKind.REMOVE, state.overdue!!.event.kind)
+        assertEquals(0, state.daysUntilNext)
+    }
+
+    @Test
+    fun `confirm clears overdue and persists the log`() = runTest {
+        repo.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 1, 21, 0)))
+        val before = repo.state.filterNotNull().first()
+        repo.confirm(before.nextEvent!!.id, fixedNow, ShiftPolicy.KEEP)
+        val after = repo.state.filterNotNull().first()
+        assertNull(after.overdue)
+        assertEquals(EventKind.INSERT, after.nextEvent!!.kind)
+        assertEquals(1, db.eventLogDao().all().first().size)
+    }
+
+    @Test
+    fun `skipPause turns next remove into swap`() = runTest {
+        repo.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 1, 21, 0)))
+        repo.skipPause()
+        assertEquals(EventKind.SWAP, repo.state.filterNotNull().first().nextEvent!!.kind)
+    }
+}
