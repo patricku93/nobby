@@ -30,6 +30,7 @@ data class OnboardingState(
     val anchorTime: LocalTime = LocalTime(21, 0),
     val palette: Palette = Palette.ROSE,
     val finished: Boolean = false,
+    val saving: Boolean = false,
 ) {
     val wearWarning: Boolean get() = wearDays > ScheduleConfig.SAFE_MAX_WEAR
     val pauseWarning: Boolean get() = pauseDays > ScheduleConfig.SAFE_MAX_PAUSE
@@ -57,12 +58,20 @@ class OnboardingViewModel @Inject constructor(
 
     fun finish() {
         val s = _state.value
+        if (s.saving || s.finished) return
+        _state.update { it.copy(saving = true) }
         viewModelScope.launch {
-            configStore.save(ScheduleConfig(Method.ring(s.wearDays, s.pauseDays, s.timeOfDay), LocalDateTime(s.anchorDate, s.anchorTime)))
-            reminders.replaceAll(ReminderRule.defaults(s.timeOfDay))
-            themeStore.save(ThemeSpec(palette = s.palette))
-            configStore.setOnboardingDone()
-            _state.update { it.copy(finished = true) }
+            runCatching {
+                configStore.save(ScheduleConfig(Method.ring(s.wearDays, s.pauseDays, s.timeOfDay), LocalDateTime(s.anchorDate, s.anchorTime)))
+                reminders.replaceAll(ReminderRule.defaults(s.timeOfDay))
+                themeStore.save(ThemeSpec(palette = s.palette))
+                configStore.setOnboardingDone()
+            }.onSuccess {
+                _state.update { it.copy(finished = true) }
+            }.onFailure {
+                android.util.Log.e("NoBby", "onboarding save failed", it)
+                _state.update { it.copy(saving = false) }
+            }
         }
     }
 }

@@ -67,7 +67,7 @@ fun OnboardingScreen(onFinished: () -> Unit, viewModel: OnboardingViewModel = hi
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             if (state.step > 0) TextButton(onClick = viewModel::back) { Text(stringResource(R.string.action_back)) } else Spacer(Modifier)
             if (state.step < OnboardingState.STEPS - 1) Button(onClick = viewModel::next) { Text(stringResource(R.string.action_next)) }
-            else Button(onClick = viewModel::finish) { Text(stringResource(R.string.action_finish)) }
+            else Button(onClick = viewModel::finish, enabled = !state.saving) { Text(stringResource(R.string.action_finish)) }
         }
     }
 }
