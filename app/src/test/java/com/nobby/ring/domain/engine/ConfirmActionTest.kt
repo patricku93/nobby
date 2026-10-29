@@ -13,6 +13,7 @@ import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.time.Duration.Companion.minutes
@@ -195,5 +196,59 @@ class ConfirmActionTest {
         val nextRemove = ScheduleEngine.generate(r.config)[0]
         val justAfter = (nextRemove.plannedAt.toInstant(TimeZone.UTC) + 1.minutes).toLocalDateTime(TimeZone.UTC)
         assertFalse(OverdueCalculator.overdue(r.config, ScheduleEngine.generate(r.config), r.logs, justAfter)!!.safetyBreached)
+    }
+
+    /** KEEP after a removal at least a full pause late: the INSERT must not be planned before the removal itself. */
+    private fun assertKeepAfterLateRemoveIsBounded(confirmedAt: LocalDateTime) {
+        val r = ConfirmAction.confirm(config, remove, emptyList(), confirmedAt, ShiftPolicy.KEEP)
+        val newEvents = ScheduleEngine.generate(r.config)
+        val next = OverdueCalculator.nextPending(newEvents, r.logs)!!
+        assertEquals(EventKind.INSERT, next.kind)
+        val latest = LocalDateTime(confirmedAt.date.plus(7, DateTimeUnit.DAY), confirmedAt.time)
+        assertTrue("next insert ${next.plannedAt} must be after $confirmedAt", confirmedAt < next.plannedAt)
+        assertTrue("next insert ${next.plannedAt} must be <= $latest", next.plannedAt <= latest)
+        assertNull(OverdueCalculator.overdue(r.config, newEvents, r.logs, confirmedAt))
+        assertEquals(1, r.logs.size)
+        assertEquals(remove.plannedAt, r.logs[0].plannedAt)
+    }
+
+    @Test
+    fun `remove with KEEP 7 days and 1 hour late plans the insert after the removal`() {
+        assertKeepAfterLateRemoveIsBounded(LocalDateTime(2026, 11, 29, 22, 0))
+    }
+
+    @Test
+    fun `remove with KEEP 10 days late plans the insert after the removal`() {
+        assertKeepAfterLateRemoveIsBounded(LocalDateTime(2026, 12, 2, 21, 0))
+    }
+
+    @Test
+    fun `remove 10 minutes early within tolerance leaves the schedule unchanged`() {
+        val r = ConfirmAction.confirm(config, remove, emptyList(), LocalDateTime(2026, 11, 22, 20, 50), ShiftPolicy.KEEP)
+        assertEquals(config.anchor, r.config.anchor)
+        val next = OverdueCalculator.nextPending(ScheduleEngine.generate(r.config), r.logs)!!
+        assertEquals(EventKind.INSERT, next.kind)
+        assertEquals(LocalDateTime(2026, 11, 29, 21, 0), next.plannedAt)
+        assertEquals(1, r.logs.size)
+        assertEquals(remove.id, r.logs[0].eventId)
+    }
+
+    @Test
+    fun `remove 13 hours early with KEEP moves the anchor one day earlier`() {
+        val r = ConfirmAction.confirm(config, remove, emptyList(), LocalDateTime(2026, 11, 22, 8, 0), ShiftPolicy.KEEP)
+        assertEquals(LocalDateTime(2026, 10, 31, 21, 0), r.config.anchor)
+        val next = OverdueCalculator.nextPending(ScheduleEngine.generate(r.config), r.logs)!!
+        assertEquals(LocalDateTime(2026, 11, 28, 21, 0), next.plannedAt)
+    }
+
+    @Test
+    fun `insert 30 minutes early within tolerance keeps the planned anchor`() {
+        val r = ConfirmAction.confirm(config, insert, emptyList(), LocalDateTime(2026, 11, 29, 20, 30), ShiftPolicy.KEEP)
+        assertEquals(insert.plannedAt, r.config.anchor)
+    }
+
+    @Test
+    fun `confirmation tolerance is 60 minutes`() {
+        assertEquals(60L, ConfirmAction.CONFIRM_TOLERANCE_MINUTES.toLong())
     }
 }

@@ -13,7 +13,6 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.abs
-import kotlin.time.Duration.Companion.hours
 
 enum class ShiftPolicy { SHIFT, KEEP }
 
@@ -23,10 +22,13 @@ object ConfirmAction {
     private val tz = TimeZone.UTC
     private const val MINUTES_PER_DAY = 1440L
 
-    fun needsPolicyChoice(event: ScheduledEvent, confirmedAt: LocalDateTime): Boolean {
-        val diff = confirmedAt.toInstant(tz) - event.plannedAt.toInstant(tz)
-        return abs(diff.inWholeMinutes) >= 1.hours.inWholeMinutes
-    }
+    /** Deviations shorter than this count as on time: no dialog, no schedule change. */
+    const val CONFIRM_TOLERANCE_MINUTES = 60
+
+    fun needsPolicyChoice(event: ScheduledEvent, confirmedAt: LocalDateTime): Boolean = !withinTolerance(event, confirmedAt)
+
+    private fun withinTolerance(event: ScheduledEvent, confirmedAt: LocalDateTime): Boolean =
+        abs(minutesBetween(event.plannedAt, confirmedAt)) < CONFIRM_TOLERANCE_MINUTES
 
     fun confirm(
         config: ScheduleConfig,
@@ -43,6 +45,7 @@ object ConfirmAction {
     /**
      * INSERT / SWAP: the new cycle starts at the confirmation. KEEP stays on the planned time unless the ring went in
      * early: an early insertion always re-anchors at the actual time so the wear phase is not under-counted.
+     * Within [CONFIRM_TOLERANCE_MINUTES] the planned time is kept (KEEP semantics), even when early.
      */
     private fun confirmCycleStart(
         config: ScheduleConfig,
@@ -51,7 +54,11 @@ object ConfirmAction {
         confirmedAt: LocalDateTime,
         policy: ShiftPolicy,
     ): ConfirmResult {
-        val anchor = if (policy == ShiftPolicy.SHIFT || confirmedAt < event.plannedAt) confirmedAt else event.plannedAt
+        val anchor = when {
+            withinTolerance(event, confirmedAt) -> event.plannedAt
+            policy == ShiftPolicy.SHIFT || confirmedAt < event.plannedAt -> confirmedAt
+            else -> event.plannedAt
+        }
         return ConfirmResult(
             config.copy(anchor = anchor, skipPauseOnce = false),
             logs + EventLog(event.id, event.kind, event.plannedAt, confirmedAt),
@@ -61,7 +68,9 @@ object ConfirmAction {
     /**
      * REMOVE: moves the anchor by whole days (SHIFT: by the day difference; KEEP: not at all) but never so far that
      * the planned INSERT lands later than [confirmedAt] + pause, so the planned ring-free break never exceeds the
-     * configured one (an early removal pulls the INSERT forward even with KEEP).
+     * configured one (an early removal pulls the INSERT forward even with KEEP). The INSERT is also never planned at
+     * or before [confirmedAt] (a removal at least a full pause late): then the anchor moves by the maximum shift, so
+     * the break restarts with at most the configured length. Within [CONFIRM_TOLERANCE_MINUTES] nothing moves.
      */
     private fun confirmRemove(
         config: ScheduleConfig,
@@ -71,16 +80,19 @@ object ConfirmAction {
         policy: ShiftPolicy,
     ): ConfirmResult {
         val eventLog = EventLog(event.id, event.kind, event.plannedAt, confirmedAt)
+        if (withinTolerance(event, confirmedAt)) return ConfirmResult(config, logs + eventLog)
         val plannedInsert = ScheduleEngine.generate(config)
             .firstOrNull { it.kind == EventKind.INSERT && it.cycleIndex == 0 }
             ?.plannedAt
             ?: return confirmRemoveUnbounded(config, event, logs, confirmedAt, policy)
         val latestInsert = confirmedAt.date.plus(config.method.pauseDays, DateTimeUnit.DAY).atTime(confirmedAt.time)
         val maxShiftDays = Math.floorDiv(minutesBetween(plannedInsert, latestInsert), MINUTES_PER_DAY).toInt()
-        val shiftDays = when (policy) {
+        val policyShiftDays = when (policy) {
             ShiftPolicy.SHIFT -> minOf(event.plannedAt.date.daysUntil(confirmedAt.date), maxShiftDays)
             ShiftPolicy.KEEP -> minOf(0, maxShiftDays)
         }
+        val insertAfterShift = plannedInsert.date.plus(policyShiftDays, DateTimeUnit.DAY).atTime(plannedInsert.time)
+        val shiftDays = if (insertAfterShift <= confirmedAt) maxShiftDays else policyShiftDays
         if (shiftDays == 0) return ConfirmResult(config, logs + eventLog)
         val shifted = config.copy(anchor = config.anchor.date.plus(shiftDays, DateTimeUnit.DAY).atTime(config.anchor.time))
         return relogShiftedRemove(config, shifted, event, logs, confirmedAt)
