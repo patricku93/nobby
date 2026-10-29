@@ -30,7 +30,7 @@
     <string name="home_skip_pause_cancel">Pause doch einlegen</string>
     <string name="home_overdue_title">Überfällig: %1$s</string>
     <string name="home_overdue_body">Geplant für %1$s. Bitte bestätigen, sobald du es gemacht hast.</string>
-    <string name="home_overdue_safety">Die sichere Frist ist überschritten. Nutze zusätzlich Verhütung und frag deine Ärztin.</string>
+    <string name="home_overdue_safety">Die sichere Frist ist überschritten. Nutze eine zusätzliche Verhütungsmethode und hol dir ärztlichen Rat.</string>
     <string name="home_snooze">Später</string>
     <string name="confirm_title">Du warst spät dran</string>
     <string name="confirm_body">Geplant war %1$s. Sollen die folgenden Termine um %2$s verschoben werden oder bleiben?</string>
@@ -52,7 +52,7 @@
     <string name="onb_reminders_title">Erinnerungen</string>
     <string name="onb_reminders_body">Das kannst du jederzeit in den Einstellungen ändern.</string>
     <string name="onb_notifications_permission">Benachrichtigungen erlauben</string>
-    <string name="onb_look_title">Mach es zu deinem</string>
+    <string name="onb_look_title">Gestalte es nach deinem Geschmack</string>
     <string name="onb_calendar_connect">Kalender verbinden</string>
     <string name="reminder_day_before">%1$d Tag(e) vorher um %2$s</string>
     <string name="reminder_same_day">Am selben Tag um %1$s</string>
@@ -70,7 +70,7 @@
     <string name="reminder_mode_hours">Stunden vorher</string>
     <string name="reminder_enabled">Aktiv</string>
     <string name="overdue_repeat">Überfällig-Alarm wiederholen alle (Stunden)</string>
-    <string name="overdue_snooze">Später-Dauer (Stunden)</string>
+    <string name="overdue_snooze">Verschieben um (Stunden)</string>
     <string name="exact_alarm_warning">Exakte Alarme sind deaktiviert. Erinnerungen können sich verzögern. Tippen zum Erlauben.</string>
     <string name="channel_low">Leise Erinnerungen</string>
     <string name="channel_normal">Erinnerungen</string>
@@ -80,8 +80,8 @@
     <string name="notif_reminder_body">Geplant für %1$s</string>
     <string name="notif_overdue_title">Überfällig: %1$s</string>
     <string name="notif_overdue_body">Geplant für %1$s. Tippe auf Erledigt, sobald du es gemacht hast.</string>
-    <string name="notif_overdue_safety">Sichere Frist überschritten – nutze zusätzlich Verhütung.</string>
-    <string name="calendar_notes_title">Hinweise – %1$s</string>
+    <string name="notif_overdue_safety">Sichere Frist überschritten – nutze eine zusätzliche Verhütungsmethode.</string>
+    <string name="calendar_notes_title">Notizen – %1$s</string>
     <string name="calendar_notes_hint">Hier schreiben</string>
     <string name="history_empty">Noch keine bestätigten Termine.</string>
     <string name="history_on_time">pünktlich</string>
@@ -92,8 +92,8 @@
     <string name="settings_appearance">Aussehen</string>
     <string name="settings_calendar">Kalender-Sync</string>
     <string name="settings_widget">Widget</string>
-    <string name="settings_about">Über</string>
-    <string name="settings_about_body">NoBby %1$s · Diese App ist eine Erinnerungshilfe, keine medizinische Beratung. Halte dich an den Beipackzettel und deine Ärztin.</string>
+    <string name="settings_about">Über die App</string>
+    <string name="settings_about_body">NoBby %1$s · Diese App ist eine Erinnerungshilfe, keine medizinische Beratung. Halte dich an den Beipackzettel und ärztlichen Rat.</string>
     <string name="schedule_preview_title">Vorschau neuer Zeitplan</string>
     <string name="schedule_preview_body">Die nächsten Termine wären:</string>
     <string name="schedule_apply">Übernehmen und Kalender aktualisieren</string>
@@ -133,4 +133,7 @@
     <string name="widget_none">Alles erledigt</string>
     <string name="widget_in_days">in %1$d T</string>
     <string name="widget_overdue_days">%1$d T überfällig</string>
+    <string name="duration_days">%1$dT</string>
+    <string name="duration_hours">%1$dStd</string>
+    <string name="duration_minutes">%1$dmin</string>
 </resources>

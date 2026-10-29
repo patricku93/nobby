@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.min
 
 @Composable
 fun RingProgress(
@@ -31,10 +32,13 @@ fun RingProgress(
     Box(modifier, contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val stroke = Stroke(strokeWidth.toPx(), cap = StrokeCap.Round)
-            val inset = strokeWidth.toPx() / 2
-            val arcSize = Size(size.width - strokeWidth.toPx(), size.height - strokeWidth.toPx())
-            drawArc(trackColor, 0f, 360f, false, Offset(inset, inset), arcSize, style = stroke)
-            drawArc(progressColor, -90f, 360f * animated, false, Offset(inset, inset), arcSize, style = stroke)
+            val diameter = min(size.width, size.height) - strokeWidth.toPx()
+            val arcSize = Size(diameter, diameter)
+            val topLeft = Offset((size.width - diameter) / 2, (size.height - diameter) / 2)
+            drawArc(trackColor, 0f, 360f, false, topLeft, arcSize, style = stroke)
+            if (animated > 0f) {
+                drawArc(progressColor, -90f, 360f * animated, false, topLeft, arcSize, style = stroke)
+            }
         }
         content()
     }
