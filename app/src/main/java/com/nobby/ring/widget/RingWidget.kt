@@ -3,6 +3,8 @@ package com.nobby.ring.widget
 import android.content.Context
 import android.content.res.Configuration
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -66,9 +68,9 @@ class RingWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val ep = EntryPointAccessors.fromApplication(context.applicationContext, WidgetEntryPoint::class.java)
-        val state = ep.schedule().currentState()
-        val config = ep.widgetConfig().config.first()
-        val theme = ep.theme().theme.first()
+        val initialState = ep.schedule().currentState()
+        val initialConfig = ep.widgetConfig().config.first()
+        val initialTheme = ep.theme().theme.first()
         val strings = WidgetStrings(
             nextAny = context.getString(R.string.widget_row_next_any),
             nextRemove = context.getString(R.string.widget_row_next_remove),
@@ -89,17 +91,23 @@ class RingWidget : GlanceAppWidget() {
                 )
             },
         )
-        val data = WidgetModel.build(state, config, strings)
-        val dark = when (theme.mode) {
-            ThemeMode.DARK -> true
-            ThemeMode.LIGHT -> false
-            ThemeMode.SYSTEM -> (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        // Collect the stores inside the composition: an existing Glance session does not re-run
+        // provideGlance on updateAll(), so values captured above would go stale (config/theme changes lagged by one update).
+        provideContent {
+            val state by ep.schedule().state.collectAsState(initialState)
+            val config by ep.widgetConfig().config.collectAsState(initialConfig)
+            val theme by ep.theme().theme.collectAsState(initialTheme)
+            val data = WidgetModel.build(state, config, strings)
+            val dark = when (theme.mode) {
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+                ThemeMode.SYSTEM -> (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+            }
+            val accent = theme.palette.accent(dark)
+            val bg = if (dark) Color(0xFF1C1C1E) else Color(0xFFFFFFFF)
+            val fg = if (dark) Color(0xFFF2F2F2) else Color(0xFF1C1C1E)
+            WidgetContent(data, config.mode, accent, bg, fg)
         }
-        val accent = theme.palette.accent(dark)
-        val bg = if (dark) Color(0xFF1C1C1E) else Color(0xFFFFFFFF)
-        val fg = if (dark) Color(0xFFF2F2F2) else Color(0xFF1C1C1E)
-
-        provideContent { WidgetContent(data, config.mode, accent, bg, fg) }
     }
 
     @Composable
@@ -124,12 +132,19 @@ class RingWidget : GlanceAppWidget() {
                 )
             } else {
                 data.rows.forEach { row ->
-                    Row(GlanceModifier.fillMaxWidth()) {
-                        Text(row.label, GlanceModifier.defaultWeight(), style = TextStyle(color = ColorProvider(fg), fontSize = 12.sp))
-                        Text(
-                            row.value,
-                            style = TextStyle(color = ColorProvider(if (row.urgent) URGENT else accent), fontSize = 14.sp, fontWeight = FontWeight.Bold),
-                        )
+                    val labelStyle = TextStyle(color = ColorProvider(fg), fontSize = 12.sp)
+                    val valueStyle = TextStyle(color = ColorProvider(if (row.urgent) URGENT else accent), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    if (size.width < WIDE.width) {
+                        // Too narrow for label and value side by side (the label wraps letter by letter): stack them.
+                        Column(GlanceModifier.fillMaxWidth()) {
+                            Text(row.label, style = labelStyle)
+                            Text(row.value, style = valueStyle)
+                        }
+                    } else {
+                        Row(GlanceModifier.fillMaxWidth()) {
+                            Text(row.label, GlanceModifier.defaultWeight(), style = labelStyle)
+                            Text(row.value, style = valueStyle)
+                        }
                     }
                     Spacer(GlanceModifier.height(4.dp))
                 }
