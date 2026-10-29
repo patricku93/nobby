@@ -81,6 +81,7 @@
     <string name="reminder_enabled">Enabled</string>
     <string name="overdue_repeat">Repeat overdue alert every (hours)</string>
     <string name="overdue_snooze">Snooze length (hours)</string>
+    <string name="reminder_disabled">off</string>
     <string name="exact_alarm_warning">Exact alarms are disabled. Reminders may be delayed. Tap to allow.</string>
 
     <!-- notifications -->

@@ -71,6 +71,7 @@
     <string name="reminder_enabled">Aktiv</string>
     <string name="overdue_repeat">Überfällig-Alarm wiederholen alle (Stunden)</string>
     <string name="overdue_snooze">Verschieben um (Stunden)</string>
+    <string name="reminder_disabled">aus</string>
     <string name="exact_alarm_warning">Exakte Alarme sind deaktiviert. Erinnerungen können sich verzögern. Tippen zum Erlauben.</string>
     <string name="channel_low">Leise Erinnerungen</string>
     <string name="channel_normal">Erinnerungen</string>

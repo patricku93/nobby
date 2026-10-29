@@ -56,7 +56,11 @@ fun NobbyNavHost(startDestination: String) {
             composable(Routes.HOME) { com.nobby.ring.ui.home.HomeScreen() }
             composable(Routes.CALENDAR) { com.nobby.ring.ui.calendar.CalendarScreen() }
             composable(Routes.HISTORY) { com.nobby.ring.ui.history.HistoryScreen() }
-            composable(Routes.SETTINGS) { Text("settings") }
+            composable(Routes.SETTINGS) { com.nobby.ring.ui.settings.SettingsScreen(onNavigate = { navController.navigate(it) }) }
+            composable(Routes.SETTINGS_SCHEDULE) { com.nobby.ring.ui.settings.ScheduleSettingsScreen(onBack = { navController.popBackStack() }) }
+            composable(Routes.SETTINGS_REMINDERS) { com.nobby.ring.ui.settings.RemindersScreen(onBack = { navController.popBackStack() }) }
+            composable(Routes.SETTINGS_APPEARANCE) { com.nobby.ring.ui.settings.AppearanceScreen(onBack = { navController.popBackStack() }) }
+            composable(Routes.SETTINGS_WIDGET) { com.nobby.ring.ui.settings.WidgetSettingsScreen(onBack = { navController.popBackStack() }) }
             composable(Routes.SETTINGS_CALENDAR) {
                 com.nobby.ring.ui.settings.CalendarSettingsScreen(onBack = { navController.popBackStack() }, onCleanup = { navController.navigate(Routes.SETTINGS_CALENDAR_CLEANUP) })
             }
