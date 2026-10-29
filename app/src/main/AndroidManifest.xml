@@ -28,6 +28,15 @@
             </intent-filter>
         </activity>
 
+        <receiver android:name=".notifications.AlarmReceiver" android:exported="false" />
+        <receiver android:name=".notifications.ActionReceiver" android:exported="false" />
+        <receiver android:name=".notifications.BootReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"

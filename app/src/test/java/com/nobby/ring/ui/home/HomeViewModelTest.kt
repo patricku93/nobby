@@ -1,17 +1,22 @@
 package com.nobby.ring.ui.home
 
 import android.content.Context
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.nobby.ring.data.db.NobbyDatabase
 import com.nobby.ring.data.prefs.MethodConfigStore
+import com.nobby.ring.data.prefs.OverdueConfigStore
+import com.nobby.ring.data.repo.ReminderRepository
 import com.nobby.ring.data.repo.ScheduleRepository
 import com.nobby.ring.domain.NobbyClock
 import com.nobby.ring.domain.engine.ShiftPolicy
 import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.Method
 import com.nobby.ring.domain.model.ScheduleConfig
+import com.nobby.ring.notifications.ReminderScheduler
 import com.nobby.ring.notifications.ScheduleChangeListener
 import com.nobby.ring.notifications.ScheduleChangeNotifier
 import kotlinx.coroutines.Dispatchers
@@ -41,6 +46,8 @@ class HomeViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private lateinit var db: NobbyDatabase
     private lateinit var repo: ScheduleRepository
+    private lateinit var context: Context
+    private lateinit var ds: DataStore<Preferences>
     private var changes = 0
     private var nowValue = LocalDateTime(2026, 11, 24, 21, 0)
     private val clock = object : NobbyClock {
@@ -51,9 +58,9 @@ class HomeViewModelTest {
     @Before
     fun setUp() = runTest {
         Dispatchers.setMain(dispatcher)
-        val context = ApplicationProvider.getApplicationContext<Context>()
+        context = ApplicationProvider.getApplicationContext()
         db = Room.inMemoryDatabaseBuilder(context, NobbyDatabase::class.java).allowMainThreadQueries().build()
-        val ds = PreferenceDataStoreFactory.create { File(context.cacheDir, "home-${System.nanoTime()}.preferences_pb") }
+        ds = PreferenceDataStoreFactory.create { File(context.cacheDir, "home-${System.nanoTime()}.preferences_pb") }
         repo = ScheduleRepository(MethodConfigStore(ds), db.eventLogDao(), clock)
         repo.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 1, 21, 0)))
     }
@@ -62,7 +69,7 @@ class HomeViewModelTest {
 
     private fun vm() = HomeViewModel(repo, clock, ScheduleChangeNotifier(setOf(object : ScheduleChangeListener {
         override suspend fun onScheduleChanged() { changes++ }
-    })))
+    })), ReminderScheduler(context, repo, ReminderRepository(db.reminderRuleDao()), OverdueConfigStore(ds), clock, ds))
 
     @Test
     fun `done on a late event opens the confirm dialog, SHIFT moves next insert`() = runTest(dispatcher) {
@@ -93,6 +100,7 @@ class HomeViewModelTest {
         vm.toggleSkipPause(); dispatcher.scheduler.advanceUntilIdle()
         vm.uiState.first { it.state?.nextEvent?.kind == EventKind.SWAP }
         assertEquals(EventKind.SWAP, vm.uiState.value.state!!.nextEvent!!.kind)
+        vm.uiState.first { !it.busy } // the commit flag clears after the config write; a toggle sent while busy is dropped
         vm.toggleSkipPause(); dispatcher.scheduler.advanceUntilIdle()
         vm.uiState.first { it.state?.nextEvent?.kind == EventKind.REMOVE }
         assertEquals(EventKind.REMOVE, vm.uiState.value.state!!.nextEvent!!.kind)

@@ -3,6 +3,7 @@ package com.nobby.ring
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.nobby.ring.notifications.Channels
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -12,4 +13,9 @@ class NobbyApp : Application(), Configuration.Provider {
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
+
+    override fun onCreate() {
+        super.onCreate()
+        Channels.create(this)
+    }
 }

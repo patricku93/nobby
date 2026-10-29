@@ -1,5 +1,9 @@
 package com.nobby.ring.ui.home
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -64,11 +69,22 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
+            if (!viewModel.exactAlarmsAllowed) ExactAlarmBanner()
             PhaseChip(state)
             Countdown(state)
             NextCard(state, ui.busy, viewModel::onDoneTapped)
         }
     }
+}
+
+@Composable
+private fun ExactAlarmBanner() {
+    val ctx = LocalContext.current
+    TextButton(onClick = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            runCatching { ctx.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${ctx.packageName}"))) }
+        }
+    }) { Text(stringResource(R.string.exact_alarm_warning), color = MaterialTheme.colorScheme.error) }
 }
 
 @Composable

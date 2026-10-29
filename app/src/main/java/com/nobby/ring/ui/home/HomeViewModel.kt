@@ -9,6 +9,7 @@ import com.nobby.ring.domain.engine.ConfirmAction
 import com.nobby.ring.domain.engine.ShiftPolicy
 import com.nobby.ring.domain.model.ScheduleState
 import com.nobby.ring.domain.model.ScheduledEvent
+import com.nobby.ring.notifications.ReminderScheduler
 import com.nobby.ring.notifications.ScheduleChangeNotifier
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -38,7 +39,10 @@ class HomeViewModel @Inject constructor(
     private val repo: ScheduleRepository,
     private val clock: NobbyClock,
     private val notifier: ScheduleChangeNotifier,
+    private val scheduler: ReminderScheduler,
 ) : ViewModel() {
+    val exactAlarmsAllowed: Boolean get() = scheduler.canScheduleExact()
+
     private val pending = MutableStateFlow<PendingConfirm?>(null)
 
     private val committing = MutableStateFlow(false)
