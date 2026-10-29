@@ -51,6 +51,7 @@ class AlarmReceiver : BroadcastReceiver() {
         if (overdue == null) {
             // Not (or no longer) overdue: clear the nag and do not re-arm; rescheduleAll re-arms for the next event.
             notifier.cancelOverdue()
+            scheduler.clearOverdueAlarm()
             return
         }
         notifier.showOverdue(overdue.event.kind, overdue.event.plannedAt, overdue.event.id, overdue.safetyBreached)

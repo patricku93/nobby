@@ -85,6 +85,9 @@ class ReminderScheduler @Inject constructor(
         dataStore.edit { it[overdueArmedKey] = eventId }
     }
 
+    /** Cancels the armed overdue alarm (if any) and forgets its event id. */
+    suspend fun clearOverdueAlarm() = mutex.withLock { cancelOverdueAlarm() }
+
     suspend fun repeatIntervalHours(): Int = overdueConfig.config.first().repeatEveryHours
 
     suspend fun snoozeHours(): Int = overdueConfig.config.first().snoozeHours
