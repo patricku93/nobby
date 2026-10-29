@@ -1020,14 +1020,11 @@ object OverdueCalculator {
     }
 
     private fun ScheduleConfig.removeTimeFor(cycleStart: LocalDateTime): LocalDateTime =
-        kotlinx.datetime.LocalDateTime(
-            cycleStart.date.plus(method.wearDays, kotlinx.datetime.DateTimeUnit.DAY), method.timeOfDay,
-        )
+        cycleStart.date.plus(method.wearDays, DateTimeUnit.DAY).atTime(method.timeOfDay)
 }
-
-private fun kotlinx.datetime.LocalDate.plus(days: Int, unit: kotlinx.datetime.DateTimeUnit.DayBased) =
-    kotlinx.datetime.plus(this, days, unit)
 ```
+
+(Add `import kotlinx.datetime.DateTimeUnit`, `import kotlinx.datetime.atTime` and `import kotlinx.datetime.plus` to the imports of `OverdueCalculator.kt`.)
 
 Note: durations are computed in UTC on purpose — the domain works in wall-clock `LocalDateTime`, so a DST shift of one hour is intentionally ignored here (reminders use real zones in Task 12).
 
