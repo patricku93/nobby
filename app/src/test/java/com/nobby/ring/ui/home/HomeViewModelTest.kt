@@ -16,6 +16,7 @@ import com.nobby.ring.domain.engine.ShiftPolicy
 import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.Method
 import com.nobby.ring.domain.model.ScheduleConfig
+import com.nobby.ring.notifications.Notifier
 import com.nobby.ring.notifications.ReminderScheduler
 import com.nobby.ring.notifications.ScheduleChangeListener
 import com.nobby.ring.notifications.ScheduleChangeNotifier
@@ -69,7 +70,7 @@ class HomeViewModelTest {
 
     private fun vm() = HomeViewModel(repo, clock, ScheduleChangeNotifier(setOf(object : ScheduleChangeListener {
         override suspend fun onScheduleChanged() { changes++ }
-    })), ReminderScheduler(context, repo, ReminderRepository(db.reminderRuleDao()), OverdueConfigStore(ds), clock, ds))
+    })), ReminderScheduler(context, repo, ReminderRepository(db.reminderRuleDao()), OverdueConfigStore(ds), clock, ds, Notifier(context)))
 
     @Test
     fun `done on a late event opens the confirm dialog, SHIFT moves next insert`() = runTest(dispatcher) {
