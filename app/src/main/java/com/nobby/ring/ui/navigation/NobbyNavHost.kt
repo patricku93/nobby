@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -41,7 +42,7 @@ fun NobbyNavHost(startDestination: String) {
                         selected = route == dest,
                         onClick = { navController.navigate(dest) { popUpTo(Routes.HOME) { saveState = true }; launchSingleTop = true; restoreState = true } },
                         icon = { Icon(icon, contentDescription = null) },
-                        label = { Text(stringResource(label)) },
+                        label = { Text(stringResource(label), maxLines = 1, softWrap = false, fontSize = 11.sp) },
                     )
                 }
             }
