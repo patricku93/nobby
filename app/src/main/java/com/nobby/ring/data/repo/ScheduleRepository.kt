@@ -26,6 +26,10 @@ class ScheduleRepository @Inject constructor(
     private val eventLogDao: EventLogDao,
     private val clock: NobbyClock,
 ) {
+    /**
+     * Current schedule state. `clock.now()` is sampled only when the config or the event log emits; this flow is
+     * not a ticker. UI should re-collect on resume, and the widget/midnight worker calls [currentState].
+     */
     val state: Flow<ScheduleState?> = combine(configStore.config, eventLogDao.all()) { config, logEntities ->
         config?.let { build(it, logEntities.map(::toDomain), clock.now()) }
     }
@@ -49,6 +53,8 @@ class ScheduleRepository @Inject constructor(
         val logs = eventLogDao.allOnce().map(::toDomain)
         val event = ScheduleEngine.generate(config).firstOrNull { it.id == eventId } ?: return
         val result = ConfirmAction.confirm(config, event, logs, confirmedAt, policy)
+        // Write logs BEFORE the config. The intermediate state "new log + old config" is harmless (a log keyed by an
+        // unknown id is ignored by nextPending), whereas "new config + no log" would briefly show the event as pending again.
         eventLogDao.upsert(result.logs.map(::toEntity))
         configStore.save(result.config)
     }

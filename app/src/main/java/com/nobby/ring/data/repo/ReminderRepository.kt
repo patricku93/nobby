@@ -13,12 +13,13 @@ import javax.inject.Inject
 class ReminderRepository @Inject constructor(private val dao: ReminderRuleDao) {
     val rules: Flow<List<ReminderRule>> = dao.all().map { it.map(::toDomain) }
     suspend fun rulesOnce(): List<ReminderRule> = dao.allOnce().map(::toDomain)
-    suspend fun upsert(rule: ReminderRule): Long = dao.upsert(toEntity(rule))
-    suspend fun delete(id: Long) = dao.delete(id)
-    suspend fun replaceAll(rules: List<ReminderRule>) {
-        dao.clear()
-        rules.forEach { dao.upsert(toEntity(it.copy(id = 0))) }
+    /** Inserts or updates [rule]; returns the rule's id (new or existing). Room's upsert returns -1 on update. */
+    suspend fun upsert(rule: ReminderRule): Long {
+        val id = dao.upsert(toEntity(rule))
+        return if (id == -1L) rule.id else id
     }
+    suspend fun delete(id: Long) = dao.delete(id)
+    suspend fun replaceAll(rules: List<ReminderRule>) = dao.replaceAll(rules.map { toEntity(it.copy(id = 0)) })
 
     private fun toDomain(e: ReminderRuleEntity) = ReminderRule(
         id = e.id,

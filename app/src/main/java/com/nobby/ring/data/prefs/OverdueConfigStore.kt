@@ -14,7 +14,17 @@ class OverdueConfigStore @Inject constructor(private val dataStore: DataStore<Pr
     private val snoozeKey = intPreferencesKey("overdue_snooze_hours")
 
     val config: Flow<OverdueConfig> = dataStore.data.map { p ->
-        OverdueConfig(p[repeatKey] ?: 2, p[snoozeKey] ?: 1)
+        OverdueConfig(
+            (p[repeatKey] ?: 2).coerceIn(MIN_REPEAT_HOURS, MAX_REPEAT_HOURS),
+            (p[snoozeKey] ?: 1).coerceIn(MIN_SNOOZE_HOURS, MAX_SNOOZE_HOURS),
+        )
+    }
+
+    companion object {
+        const val MIN_REPEAT_HOURS = 1
+        const val MAX_REPEAT_HOURS = 24
+        const val MIN_SNOOZE_HOURS = 1
+        const val MAX_SNOOZE_HOURS = 12
     }
 
     suspend fun save(config: OverdueConfig) {

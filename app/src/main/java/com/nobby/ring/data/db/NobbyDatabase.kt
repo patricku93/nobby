@@ -6,6 +6,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
+import androidx.room.Transaction
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -67,6 +68,12 @@ interface ReminderRuleDao {
     @Upsert suspend fun upsert(rule: ReminderRuleEntity): Long
     @Query("DELETE FROM reminder_rule WHERE id = :id") suspend fun delete(id: Long)
     @Query("DELETE FROM reminder_rule") suspend fun clear()
+
+    @Transaction
+    suspend fun replaceAll(rules: List<ReminderRuleEntity>) {
+        clear()
+        rules.forEach { upsert(it) }
+    }
 }
 
 @Dao

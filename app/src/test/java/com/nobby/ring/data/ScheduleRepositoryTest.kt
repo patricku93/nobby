@@ -80,4 +80,31 @@ class ScheduleRepositoryTest {
         repo.skipPause()
         assertEquals(EventKind.SWAP, repo.state.filterNotNull().first().nextEvent!!.kind)
     }
+
+    @Test
+    fun `confirm with unknown eventId is a no-op`() = runTest {
+        val config = ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 1, 21, 0))
+        repo.updateConfig(config)
+        repo.confirm("does-not-exist", fixedNow, ShiftPolicy.KEEP)
+        assertEquals(0, db.eventLogDao().allOnce().size)
+        assertEquals(config, repo.state.filterNotNull().first().config)
+    }
+
+    @Test
+    fun `confirm late remove with SHIFT moves the next insert and leaves one log`() = runTest {
+        val lateClock = object : NobbyClock {
+            override fun now() = LocalDateTime(2026, 11, 24, 21, 0)
+            override val zone = TimeZone.UTC
+        }
+        val lateRepo = ScheduleRepository(MethodConfigStore(dataStore), db.eventLogDao(), lateClock)
+        lateRepo.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 1, 21, 0)))
+        val before = lateRepo.state.filterNotNull().first()
+        assertEquals(EventKind.REMOVE, before.nextEvent!!.kind)
+        lateRepo.confirm(before.nextEvent!!.id, LocalDateTime(2026, 11, 24, 21, 0), ShiftPolicy.SHIFT)
+        val after = lateRepo.state.filterNotNull().first()
+        assertEquals(1, db.eventLogDao().allOnce().size)
+        assertEquals(EventKind.INSERT, after.nextEvent!!.kind)
+        assertEquals(LocalDateTime(2026, 12, 1, 21, 0), after.nextEvent!!.plannedAt)
+        assertNull(after.overdue)
+    }
 }
