@@ -5,7 +5,6 @@ import com.nobby.ring.domain.model.ScheduleConfig
 import com.nobby.ring.domain.model.ScheduledEvent
 import com.nobby.ring.domain.model.eventId
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.atTime
 import kotlinx.datetime.plus
 
@@ -21,6 +20,7 @@ object ScheduleEngine {
 
         while (true) {
             val removeAt = cycleStart.date.plus(method.wearDays, DateTimeUnit.DAY).atTime(method.timeOfDay)
+            check(removeAt > cycleStart) { "Schedule does not advance" }
             if (removeAt >= horizonEnd) break
 
             val swap = method.pauseDays == 0 || skipPause
@@ -37,6 +37,6 @@ object ScheduleEngine {
             }
             cycleIndex += 1
         }
-        return events.toList()
+        return events
     }
 }

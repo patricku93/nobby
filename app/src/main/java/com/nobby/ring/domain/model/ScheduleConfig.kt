@@ -10,6 +10,18 @@ data class ScheduleConfig(
     /** One-off: the next REMOVE becomes a SWAP and the following cycle starts there. */
     val skipPauseOnce: Boolean = false,
 ) {
+    init {
+        require(method.wearDays in MIN_WEAR..MAX_WEAR) {
+            "wearDays must be in $MIN_WEAR..$MAX_WEAR but was ${method.wearDays}"
+        }
+        require(method.pauseDays in MIN_PAUSE..MAX_PAUSE) {
+            "pauseDays must be in $MIN_PAUSE..$MAX_PAUSE but was ${method.pauseDays}"
+        }
+        require(horizonMonths in MIN_HORIZON..MAX_HORIZON) {
+            "horizonMonths must be in $MIN_HORIZON..$MAX_HORIZON but was $horizonMonths"
+        }
+    }
+
     companion object {
         const val MIN_WEAR = 1
         const val MAX_WEAR = 35
