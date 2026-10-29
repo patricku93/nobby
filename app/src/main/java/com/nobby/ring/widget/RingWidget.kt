@@ -42,7 +42,7 @@ import com.nobby.ring.data.prefs.ThemeStore
 import com.nobby.ring.data.prefs.WidgetConfigStore
 import com.nobby.ring.data.repo.ScheduleRepository
 import com.nobby.ring.domain.NobbyClock
-import com.nobby.ring.domain.engine.ShiftPolicy
+import com.nobby.ring.domain.engine.ConfirmAction
 import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.ThemeMode
 import com.nobby.ring.domain.model.WidgetMode
@@ -82,6 +82,7 @@ class RingWidget : GlanceAppWidget() {
             none = context.getString(R.string.widget_none),
             inDays = { context.getString(R.string.widget_in_days, it) },
             overdueDays = { context.getString(R.string.widget_overdue_days, it) },
+            overdueHours = { context.getString(R.string.widget_overdue_hours, it) },
             cycleDayFmt = { d, n -> context.getString(R.string.cycle_day, d, n) },
             kindLabel = { k ->
                 context.getString(
@@ -180,7 +181,9 @@ class DoneAction : ActionCallback {
             val days = state.daysUntilNext ?: return
             if (days > 0) return
             val next = state.nextEvent ?: return
-            ep.schedule().confirm(next.id, ep.clock().now(), ShiftPolicy.KEEP)
+            val now = ep.clock().now()
+            // A late removal keeps the usual full break; a late insertion keeps the planned removal.
+            ep.schedule().confirm(next.id, now, ConfirmAction.quickConfirmPolicy(next, now))
             ep.changeNotifier().notifyChanged()
         }.onFailure { e ->
             if (e is CancellationException) throw e

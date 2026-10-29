@@ -17,7 +17,7 @@ import org.junit.Test
 class WidgetModelTest {
     private val strings = WidgetStrings(
         nextAny = "Next", nextRemove = "Remove", nextInsert = "Insert", overdue = "Overdue", cycleDay = "Cycle", none = "All done",
-        inDays = { "in $it d" }, overdueDays = { "$it d overdue" }, cycleDayFmt = { d, n -> "Day $d of $n" },
+        inDays = { "in $it d" }, overdueDays = { "$it d overdue" }, overdueHours = { "$it h overdue" }, cycleDayFmt = { d, n -> "Day $d of $n" },
         kindLabel = { it.name.lowercase() },
     )
     private val config = ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 1, 21, 0), 2)
@@ -48,5 +48,24 @@ class WidgetModelTest {
     fun `null state yields the none row`() {
         val data = WidgetModel.build(null, WidgetConfig(), strings)
         assertEquals("All done", data.rows[0].value)
+    }
+
+    @Test
+    fun `overdue by less than a day shows hours`() {
+        // REMOVE planned 2026-11-22 21:00, now 5 h later (next calendar day)
+        val state = ScheduleRepository.buildState(config, emptyList(), LocalDateTime(2026, 11, 23, 2, 0))
+        val data = WidgetModel.build(state, WidgetConfig(WidgetMode.MULTI, listOf(WidgetRow.NEXT_ANY, WidgetRow.OVERDUE)), strings)
+        assertEquals("5 h overdue", data.rows[0].value)
+        assertTrue(data.rows[0].urgent)
+        assertEquals("5 h overdue", data.rows[1].value)
+        assertTrue(data.rows[1].urgent)
+    }
+
+    @Test
+    fun `overdue on the same day shows hours in single mode`() {
+        val state = ScheduleRepository.buildState(config, emptyList(), LocalDateTime(2026, 11, 22, 23, 30))
+        val data = WidgetModel.build(state, WidgetConfig(WidgetMode.SINGLE, emptyList()), strings)
+        assertEquals("2 h overdue", data.rows[0].value)
+        assertTrue(data.rows[0].urgent)
     }
 }

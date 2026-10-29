@@ -251,4 +251,14 @@ class ConfirmActionTest {
     fun `confirmation tolerance is 60 minutes`() {
         assertEquals(60L, ConfirmAction.CONFIRM_TOLERANCE_MINUTES.toLong())
     }
+
+    @Test
+    fun `quick confirm shifts only a removal at least one day late`() {
+        assertEquals(ShiftPolicy.KEEP, ConfirmAction.quickConfirmPolicy(remove, LocalDateTime(2026, 11, 23, 20, 59)))
+        assertEquals(ShiftPolicy.SHIFT, ConfirmAction.quickConfirmPolicy(remove, LocalDateTime(2026, 11, 23, 21, 0)))
+        assertEquals(ShiftPolicy.KEEP, ConfirmAction.quickConfirmPolicy(remove, LocalDateTime(2026, 11, 21, 21, 0)))
+        assertEquals(ShiftPolicy.KEEP, ConfirmAction.quickConfirmPolicy(insert, LocalDateTime(2026, 12, 2, 21, 0)))
+        val swap = ScheduleEngine.generate(config.copy(skipPauseOnce = true))[0]
+        assertEquals(ShiftPolicy.SHIFT, ConfirmAction.quickConfirmPolicy(swap, LocalDateTime(2026, 11, 24, 21, 0)))
+    }
 }

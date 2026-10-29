@@ -13,6 +13,7 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.abs
+import kotlin.time.Duration.Companion.days
 
 enum class ShiftPolicy { SHIFT, KEEP }
 
@@ -26,6 +27,16 @@ object ConfirmAction {
     const val CONFIRM_TOLERANCE_MINUTES = 60
 
     fun needsPolicyChoice(event: ScheduledEvent, confirmedAt: LocalDateTime): Boolean = !withinTolerance(event, confirmedAt)
+
+    /**
+     * Policy for a one-tap confirmation without the dialog (notification / widget Done): a REMOVE (or SWAP) at least one
+     * day late uses SHIFT, everything else KEEP. A late removal keeps the usual full break; a late insertion keeps the
+     * planned removal.
+     */
+    fun quickConfirmPolicy(event: ScheduledEvent, confirmedAt: LocalDateTime): ShiftPolicy {
+        val late = confirmedAt.toInstant(tz) - event.plannedAt.toInstant(tz)
+        return if (event.kind != EventKind.INSERT && late >= 1.days) ShiftPolicy.SHIFT else ShiftPolicy.KEEP
+    }
 
     private fun withinTolerance(event: ScheduledEvent, confirmedAt: LocalDateTime): Boolean =
         abs(minutesBetween(event.plannedAt, confirmedAt)) < CONFIRM_TOLERANCE_MINUTES

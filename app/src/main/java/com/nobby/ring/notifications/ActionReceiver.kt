@@ -6,6 +6,7 @@ import android.content.Intent
 import android.util.Log
 import com.nobby.ring.data.repo.ScheduleRepository
 import com.nobby.ring.domain.NobbyClock
+import com.nobby.ring.domain.engine.ConfirmAction
 import com.nobby.ring.domain.engine.ShiftPolicy
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
@@ -30,7 +31,11 @@ class ActionReceiver : BroadcastReceiver() {
                 runCatching {
                     when (intent.action) {
                         ACTION_DONE -> {
-                            schedule.confirm(eventId, clock.now(), ShiftPolicy.KEEP)
+                            val now = clock.now()
+                            // A late removal keeps the usual full break; a late insertion keeps the planned removal.
+                            val event = schedule.currentState()?.events?.firstOrNull { it.id == eventId }
+                            val policy = event?.let { ConfirmAction.quickConfirmPolicy(it, now) } ?: ShiftPolicy.KEEP
+                            schedule.confirm(eventId, now, policy)
                             notifier.cancelOverdue()
                             changeNotifier.notifyChanged()
                         }
