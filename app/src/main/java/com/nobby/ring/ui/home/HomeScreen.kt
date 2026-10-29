@@ -106,7 +106,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                 }
             }
             PhaseChip(state)
-            Countdown(state)
+            Countdown(state, compact = !exactAlarmsAllowed && !notificationsEnabled)
             NextCard(state, ui.busy, viewModel::onDoneTapped)
         }
     }
@@ -181,7 +181,7 @@ private fun PhaseChip(state: ScheduleState) {
 }
 
 @Composable
-private fun Countdown(state: ScheduleState) {
+private fun Countdown(state: ScheduleState, compact: Boolean) {
     val days = state.daysUntilNext ?: 0
     val p = state.position
     val progress = (p.dayInPhase.toFloat() / p.phaseLengthDays.coerceAtLeast(1)).coerceIn(0f, 1f)
@@ -194,7 +194,7 @@ private fun Countdown(state: ScheduleState) {
     }
     RingProgress(
         progress = progress,
-        modifier = Modifier.fillMaxWidth(0.72f).widthIn(max = 240.dp).aspectRatio(1f),
+        modifier = Modifier.fillMaxWidth(if (compact) 0.56f else 0.72f).widthIn(max = 240.dp).aspectRatio(1f),
         progressColor = if (overdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
