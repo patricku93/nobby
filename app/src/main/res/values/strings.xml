@@ -42,7 +42,7 @@
     <string name="confirm_title">You were late</string>
     <string name="confirm_body">This was planned for %1$s. Should the following dates move by %2$s, or stay as planned?</string>
     <string name="confirm_title_early">You were early</string>
-    <string name="confirm_body_early">This was planned for %1$s. Should the following dates move earlier by %2$s, or stay as planned?</string>
+    <string name="confirm_body_early">This was planned for %1$s. The following dates will be adjusted so your break stays within the limit.</string>
     <string name="confirm_shift">Shift dates</string>
     <string name="confirm_keep">Keep schedule</string>
     <string name="confirm_when">When did you do it?</string>

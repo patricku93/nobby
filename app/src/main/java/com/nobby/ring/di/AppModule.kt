@@ -41,6 +41,7 @@ object AppModule {
 
     @Provides @Singleton fun clock(): NobbyClock = SystemClock()
 
+    /** Single-threaded view of Default: persist + notify launches run in call order. */
     @Provides @Singleton @ApplicationScope
-    fun applicationScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    fun applicationScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default.limitedParallelism(1))
 }

@@ -22,6 +22,10 @@ import kotlinx.datetime.LocalDateTime
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.minutes
 
+/**
+ * Late (beyond the tolerance): the user chooses SHIFT or KEEP. Early: there is nothing to choose, the following dates are
+ * always adjusted so the break stays within the limit, so a single Done button confirms with KEEP.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ConfirmDialog(
@@ -37,8 +41,8 @@ fun ConfirmDialog(
         title = { Text(stringResource(if (early) R.string.confirm_title_early else R.string.confirm_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                val body = if (early) R.string.confirm_body_early else R.string.confirm_body
-                Text(stringResource(body, formatDateTime(pending.event.plannedAt), formatDuration(absDelay)))
+                val planned = formatDateTime(pending.event.plannedAt)
+                Text(if (early) stringResource(R.string.confirm_body_early, planned) else stringResource(R.string.confirm_body, planned, formatDuration(absDelay)))
                 Text(stringResource(R.string.confirm_when))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DatePickerField(pending.confirmedAt.date, { onTimeChange(LocalDateTime(it, pending.confirmedAt.time)) }, stringResource(R.string.onb_anchor_date))
@@ -46,10 +50,16 @@ fun ConfirmDialog(
                 }
             }
         },
-        confirmButton = { Button(onClick = { onPolicy(ShiftPolicy.SHIFT) }) { Text(stringResource(R.string.confirm_shift)) } },
+        confirmButton = {
+            if (early) {
+                Button(onClick = { onPolicy(ShiftPolicy.KEEP) }) { Text(stringResource(R.string.action_done)) }
+            } else {
+                Button(onClick = { onPolicy(ShiftPolicy.SHIFT) }) { Text(stringResource(R.string.confirm_shift)) }
+            }
+        },
         dismissButton = {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                OutlinedButton(onClick = { onPolicy(ShiftPolicy.KEEP) }) { Text(stringResource(R.string.confirm_keep)) }
+                if (!early) OutlinedButton(onClick = { onPolicy(ShiftPolicy.KEEP) }) { Text(stringResource(R.string.confirm_keep)) }
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
             }
         },

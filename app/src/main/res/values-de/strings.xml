@@ -36,7 +36,7 @@
     <string name="confirm_title">Du warst spät dran</string>
     <string name="confirm_body">Geplant war %1$s. Sollen die folgenden Termine um %2$s verschoben werden oder bleiben?</string>
     <string name="confirm_title_early">Du warst früh dran</string>
-    <string name="confirm_body_early">Geplant war %1$s. Sollen die folgenden Termine um %2$s nach vorn verschoben werden oder bleiben?</string>
+    <string name="confirm_body_early">Geplant war %1$s. Die folgenden Termine werden angepasst, damit deine Pause im Rahmen bleibt.</string>
     <string name="confirm_shift">Termine verschieben</string>
     <string name="confirm_keep">Plan beibehalten</string>
     <string name="confirm_when">Wann hast du es gemacht?</string>

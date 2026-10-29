@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AlarmOff
 import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -204,15 +205,34 @@ private fun Countdown(state: ScheduleState, compact: Boolean) {
     }
 }
 
-/** Event card and Done button come first so the button keeps the same above-the-fold position when overdue. */
+/**
+ * Event card and Done button come first so the button keeps the same above-the-fold position when overdue. A safety
+ * breach adds a one-line notice above them so it is visible without scrolling; the full [OverdueCard] stays below.
+ */
 @Composable
 private fun NextCard(state: ScheduleState, busy: Boolean, onDone: () -> Unit) {
     val next = state.nextEvent ?: return
     val overdue = state.overdue
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (overdue?.safetyBreached == true) SafetyNotice()
         EventCard(next.kind, next.plannedAt, overdue = overdue != null, onDone = null)
         Button(onClick = onDone, Modifier.fillMaxWidth(), enabled = !busy && state.isDue) { Text(stringResource(R.string.home_mark_done)) }
         if (overdue != null) OverdueCard(overdue)
+    }
+}
+
+@Composable
+private fun SafetyNotice() {
+    val color = MaterialTheme.colorScheme.error
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Icon(Icons.Default.Warning, contentDescription = null, Modifier.size(18.dp), tint = color)
+        Text(
+            stringResource(R.string.notif_overdue_safety_short),
+            color = color,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
