@@ -15,7 +15,14 @@ interface ScheduleChangeListener {
 class ScheduleChangeNotifier @Inject constructor(
     private val listeners: Set<@JvmSuppressWildcards ScheduleChangeListener>,
 ) {
-    suspend fun notifyChanged() = listeners.forEach { it.onScheduleChanged() }
+    suspend fun notifyChanged() {
+        listeners.forEach { l ->
+            runCatching { l.onScheduleChanged() }.onFailure { e ->
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                android.util.Log.e("NoBby", "schedule listener failed", e)
+            }
+        }
+    }
 }
 
 @Module

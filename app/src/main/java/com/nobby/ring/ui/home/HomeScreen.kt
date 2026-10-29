@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -58,13 +60,13 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         },
     ) { padding ->
         Column(
-            Modifier.padding(padding).fillMaxSize().padding(24.dp),
+            Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             PhaseChip(state)
             Countdown(state)
-            NextCard(state, viewModel::onDoneTapped)
+            NextCard(state, ui.busy, viewModel::onDoneTapped)
         }
     }
 }
@@ -100,7 +102,7 @@ private fun Countdown(state: ScheduleState) {
 }
 
 @Composable
-private fun NextCard(state: ScheduleState, onDone: () -> Unit) {
+private fun NextCard(state: ScheduleState, busy: Boolean, onDone: () -> Unit) {
     val next = state.nextEvent ?: return
     val overdue = state.overdue
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -116,7 +118,7 @@ private fun NextCard(state: ScheduleState, onDone: () -> Unit) {
                 }
             }
         }
-        EventCard(next.kind, next.plannedAt, overdue = overdue != null, onDone = onDone)
-        Button(onClick = onDone, Modifier.fillMaxWidth()) { Text(stringResource(R.string.home_mark_done)) }
+        EventCard(next.kind, next.plannedAt, overdue = overdue != null, onDone = null)
+        Button(onClick = onDone, Modifier.fillMaxWidth(), enabled = !busy) { Text(stringResource(R.string.home_mark_done)) }
     }
 }

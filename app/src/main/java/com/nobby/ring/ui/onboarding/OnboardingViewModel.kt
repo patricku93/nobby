@@ -12,6 +12,7 @@ import com.nobby.ring.domain.model.ReminderRule
 import com.nobby.ring.domain.model.ScheduleConfig
 import com.nobby.ring.domain.model.ThemeSpec
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -69,6 +70,7 @@ class OnboardingViewModel @Inject constructor(
             }.onSuccess {
                 _state.update { it.copy(finished = true) }
             }.onFailure {
+                if (it is CancellationException) throw it
                 android.util.Log.e("NoBby", "onboarding save failed", it)
                 _state.update { it.copy(saving = false) }
             }

@@ -42,8 +42,9 @@ class HomeViewModelTest {
     private lateinit var db: NobbyDatabase
     private lateinit var repo: ScheduleRepository
     private var changes = 0
+    private var nowValue = LocalDateTime(2026, 11, 24, 21, 0)
     private val clock = object : NobbyClock {
-        override fun now() = LocalDateTime(2026, 11, 24, 21, 0)
+        override fun now() = nowValue
         override val zone = TimeZone.UTC
     }
 
@@ -75,6 +76,7 @@ class HomeViewModelTest {
         vm.onPolicyChosen(ShiftPolicy.SHIFT)
         dispatcher.scheduler.advanceUntilIdle()
         vm.uiState.first { it.state?.nextEvent?.kind == EventKind.INSERT }
+        dispatcher.scheduler.advanceUntilIdle()
         assertNull(vm.uiState.value.pendingConfirm)
         val next = vm.uiState.value.state!!.nextEvent!!
         assertEquals(EventKind.INSERT, next.kind)
@@ -94,5 +96,31 @@ class HomeViewModelTest {
         vm.toggleSkipPause(); dispatcher.scheduler.advanceUntilIdle()
         vm.uiState.first { it.state?.nextEvent?.kind == EventKind.REMOVE }
         assertEquals(EventKind.REMOVE, vm.uiState.value.state!!.nextEvent!!.kind)
+    }
+
+    @Test
+    fun `done tapped twice confirms once`() = runTest(dispatcher) {
+        nowValue = LocalDateTime(2026, 11, 22, 21, 0)
+        val vm = vm()
+        backgroundScope.launch { vm.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+        vm.uiState.first { it.state != null }
+        vm.onDoneTapped()
+        vm.onDoneTapped()
+        vm.uiState.first { it.state?.nextEvent?.kind == EventKind.INSERT }
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, db.eventLogDao().allOnce().size)
+        assertEquals(1, changes)
+    }
+
+    @Test
+    fun `listener failure does not stop other listeners`() = runTest {
+        var count = 0
+        val notifier = ScheduleChangeNotifier(linkedSetOf(
+            object : ScheduleChangeListener { override suspend fun onScheduleChanged() { error("boom") } },
+            object : ScheduleChangeListener { override suspend fun onScheduleChanged() { count++ } },
+        ))
+        notifier.notifyChanged()
+        assertEquals(1, count)
     }
 }

@@ -2,7 +2,8 @@ package com.nobby.ring.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
@@ -21,6 +22,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.minutes
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ConfirmDialog(
     pending: PendingConfirm,
@@ -36,7 +38,7 @@ fun ConfirmDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.confirm_body, formatDateTime(pending.event.plannedAt), formatDuration(absDelay)))
                 Text(stringResource(R.string.confirm_when))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DatePickerField(pending.confirmedAt.date, { onTimeChange(LocalDateTime(it, pending.confirmedAt.time)) }, stringResource(R.string.onb_anchor_date))
                     TimePickerField(pending.confirmedAt.time, { onTimeChange(LocalDateTime(pending.confirmedAt.date, it)) }, stringResource(R.string.onb_anchor_time))
                 }
@@ -44,7 +46,7 @@ fun ConfirmDialog(
         },
         confirmButton = { Button(onClick = { onPolicy(ShiftPolicy.SHIFT) }) { Text(stringResource(R.string.confirm_shift)) } },
         dismissButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 OutlinedButton(onClick = { onPolicy(ShiftPolicy.KEEP) }) { Text(stringResource(R.string.confirm_keep)) }
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
             }
