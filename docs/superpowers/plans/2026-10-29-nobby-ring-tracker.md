@@ -864,7 +864,8 @@ class OverdueCalculatorTest {
 
     @Test
     fun `insert overdue beyond 7 days of pause breaches safety`() {
-        val removeLog = EventLog("REMOVE@2026-11-22T21:00", EventKind.REMOVE, LocalDateTime(2026, 11, 22, 21, 0), LocalDateTime(2026, 11, 22, 21, 0))
+        // ring was removed 12 h late (KEEP policy), so the actual pause at 2026-11-29 23:00 is 6 d 14 h
+        val removeLog = EventLog("REMOVE@2026-11-22T21:00", EventKind.REMOVE, LocalDateTime(2026, 11, 22, 21, 0), LocalDateTime(2026, 11, 23, 9, 0))
         val ok = OverdueCalculator.overdue(config, events, listOf(removeLog), LocalDateTime(2026, 11, 29, 23, 0))
         assertEquals(EventKind.INSERT, ok!!.event.kind)
         assertFalse(ok.safetyBreached)
