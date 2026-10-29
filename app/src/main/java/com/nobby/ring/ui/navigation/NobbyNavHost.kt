@@ -48,7 +48,11 @@ fun NobbyNavHost(startDestination: String) {
         },
     ) { padding ->
         NavHost(navController, startDestination, Modifier.padding(padding)) {
-            composable(Routes.ONBOARDING) { Text("onboarding") }
+            composable(Routes.ONBOARDING) {
+                com.nobby.ring.ui.onboarding.OnboardingScreen(onFinished = {
+                    navController.navigate(Routes.HOME) { popUpTo(Routes.ONBOARDING) { inclusive = true } }
+                })
+            }
             composable(Routes.HOME) { Text("home") }
             composable(Routes.CALENDAR) { Text("calendar") }
             composable(Routes.HISTORY) { Text("history") }
