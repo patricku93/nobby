@@ -97,6 +97,8 @@
     <!-- calendar -->
     <string name="calendar_notes_title">Notes – %1$s</string>
     <string name="calendar_notes_hint">Write here</string>
+    <string name="calendar_prev_month">Previous month</string>
+    <string name="calendar_next_month">Next month</string>
 
     <!-- history -->
     <string name="history_empty">No confirmed events yet.</string>

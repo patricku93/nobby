@@ -54,8 +54,8 @@ fun NobbyNavHost(startDestination: String) {
                 })
             }
             composable(Routes.HOME) { com.nobby.ring.ui.home.HomeScreen() }
-            composable(Routes.CALENDAR) { Text("calendar") }
-            composable(Routes.HISTORY) { Text("history") }
+            composable(Routes.CALENDAR) { com.nobby.ring.ui.calendar.CalendarScreen() }
+            composable(Routes.HISTORY) { com.nobby.ring.ui.history.HistoryScreen() }
             composable(Routes.SETTINGS) { Text("settings") }
         }
     }

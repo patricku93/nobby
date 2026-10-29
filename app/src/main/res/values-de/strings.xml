@@ -83,6 +83,8 @@
     <string name="notif_overdue_safety">Sichere Frist überschritten – nutze eine zusätzliche Verhütungsmethode.</string>
     <string name="calendar_notes_title">Notizen – %1$s</string>
     <string name="calendar_notes_hint">Hier schreiben</string>
+    <string name="calendar_prev_month">Vorheriger Monat</string>
+    <string name="calendar_next_month">Nächster Monat</string>
     <string name="history_empty">Noch keine bestätigten Termine.</string>
     <string name="history_on_time">pünktlich</string>
     <string name="history_late">%1$s zu spät</string>

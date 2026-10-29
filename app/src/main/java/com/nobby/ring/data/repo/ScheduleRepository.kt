@@ -59,22 +59,27 @@ class ScheduleRepository @Inject constructor(
         configStore.save(result.config)
     }
 
-    fun build(config: ScheduleConfig, logs: List<EventLog>, now: LocalDateTime): ScheduleState {
-        val events = ScheduleEngine.generate(config)
-        return ScheduleState(
-            config = config,
-            events = events,
-            logs = logs,
-            now = now,
-            position = CycleCalculator.positionAt(config, logs, now),
-            nextEvent = OverdueCalculator.nextPending(events, logs),
-            overdue = OverdueCalculator.overdue(config, events, logs, now),
-        )
-    }
+    fun build(config: ScheduleConfig, logs: List<EventLog>, now: LocalDateTime): ScheduleState = buildState(config, logs, now)
 
     private fun toDomain(e: EventLogEntity) = EventLog(
         e.eventId, EventKind.valueOf(e.kind), LocalDateTime.parse(e.plannedAt), LocalDateTime.parse(e.confirmedAt),
     )
 
     private fun toEntity(l: EventLog) = EventLogEntity(l.eventId, l.kind.name, l.plannedAt.toString(), l.confirmedAt.toString())
+
+    companion object {
+        /** Pure state builder, usable without Hilt (tests, widget). */
+        fun buildState(config: ScheduleConfig, logs: List<EventLog>, now: LocalDateTime): ScheduleState {
+            val events = ScheduleEngine.generate(config)
+            return ScheduleState(
+                config = config,
+                events = events,
+                logs = logs,
+                now = now,
+                position = CycleCalculator.positionAt(config, logs, now),
+                nextEvent = OverdueCalculator.nextPending(events, logs),
+                overdue = OverdueCalculator.overdue(config, events, logs, now),
+            )
+        }
+    }
 }
