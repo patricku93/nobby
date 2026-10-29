@@ -53,7 +53,7 @@ fun NobbyNavHost(startDestination: String) {
                     navController.navigate(Routes.HOME) { popUpTo(Routes.ONBOARDING) { inclusive = true } }
                 })
             }
-            composable(Routes.HOME) { Text("home") }
+            composable(Routes.HOME) { com.nobby.ring.ui.home.HomeScreen() }
             composable(Routes.CALENDAR) { Text("calendar") }
             composable(Routes.HISTORY) { Text("history") }
             composable(Routes.SETTINGS) { Text("settings") }
