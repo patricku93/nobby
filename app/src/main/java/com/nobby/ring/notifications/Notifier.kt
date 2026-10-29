@@ -30,11 +30,13 @@ class Notifier @Inject constructor(@ApplicationContext private val context: Cont
     }
 
     fun showOverdue(kind: EventKind, plannedAt: LocalDateTime, eventId: String, safetyBreached: Boolean) {
+        // REMOVE/SWAP overdue means the ring stays in too long; INSERT overdue means the break runs too long.
+        val safety = if (kind == EventKind.INSERT) R.string.notif_overdue_safety_pause else R.string.notif_overdue_safety_wear
         val text = buildString {
             append(context.getString(R.string.notif_overdue_body, formatDateTime(plannedAt)))
-            if (safetyBreached) append("\n").append(context.getString(R.string.notif_overdue_safety))
+            if (safetyBreached) append("\n").append(context.getString(safety))
         }
-        val n = NotificationCompat.Builder(context, Channels.URGENT)
+        val builder = NotificationCompat.Builder(context, Channels.URGENT)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(context.getString(R.string.notif_overdue_title, kindLabel(kind)))
             .setContentText(text)
@@ -45,8 +47,9 @@ class Notifier @Inject constructor(@ApplicationContext private val context: Cont
             .setContentIntent(openApp())
             .addAction(0, context.getString(R.string.action_done), action(ActionReceiver.ACTION_DONE, eventId))
             .addAction(0, context.getString(R.string.home_snooze), action(ActionReceiver.ACTION_SNOOZE, eventId))
-            .build()
-        notify(OVERDUE_ID, n)
+        // subText stays visible while the notification is collapsed, unlike the second line of the big text.
+        if (safetyBreached) builder.setSubText(context.getString(R.string.notif_overdue_safety_short))
+        notify(OVERDUE_ID, builder.build())
     }
 
     fun cancelOverdue() = NotificationManagerCompat.from(context).cancel(OVERDUE_ID)

@@ -1,5 +1,6 @@
 package com.nobby.ring.ui.navigation
 
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -48,7 +49,8 @@ fun NobbyNavHost(startDestination: String) {
             }
         },
     ) { padding ->
-        NavHost(navController, startDestination, Modifier.padding(padding)) {
+        // consumeWindowInsets: the screens' own Scaffolds/TopAppBars must not add the status/navigation bar insets again.
+        NavHost(navController, startDestination, Modifier.padding(padding).consumeWindowInsets(padding)) {
             composable(Routes.ONBOARDING) {
                 com.nobby.ring.ui.onboarding.OnboardingScreen(onFinished = {
                     navController.navigate(Routes.HOME) { popUpTo(Routes.ONBOARDING) { inclusive = true } }

@@ -31,12 +31,14 @@ fun ConfirmDialog(
     onDismiss: () -> Unit,
 ) {
     val absDelay = abs(pending.delay.inWholeMinutes).minutes
+    val early = pending.delay.isNegative()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.confirm_title)) },
+        title = { Text(stringResource(if (early) R.string.confirm_title_early else R.string.confirm_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.confirm_body, formatDateTime(pending.event.plannedAt), formatDuration(absDelay)))
+                val body = if (early) R.string.confirm_body_early else R.string.confirm_body
+                Text(stringResource(body, formatDateTime(pending.event.plannedAt), formatDuration(absDelay)))
                 Text(stringResource(R.string.confirm_when))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DatePickerField(pending.confirmedAt.date, { onTimeChange(LocalDateTime(it, pending.confirmedAt.time)) }, stringResource(R.string.onb_anchor_date))

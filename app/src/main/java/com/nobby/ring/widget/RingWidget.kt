@@ -2,6 +2,7 @@ package com.nobby.ring.widget
 
 import android.content.Context
 import android.content.res.Configuration
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -51,6 +52,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 
 @EntryPoint
@@ -171,10 +173,18 @@ class RingWidget : GlanceAppWidget() {
 
 class DoneAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        val ep = EntryPointAccessors.fromApplication(context.applicationContext, WidgetEntryPoint::class.java)
-        val state = ep.schedule().currentState() ?: return
-        val next = state.nextEvent ?: return
-        ep.schedule().confirm(next.id, ep.clock().now(), ShiftPolicy.KEEP)
-        ep.changeNotifier().notifyChanged()
+        runCatching {
+            val ep = EntryPointAccessors.fromApplication(context.applicationContext, WidgetEntryPoint::class.java)
+            val state = ep.schedule().currentState() ?: return
+            // The widget may be stale: re-check that the event is still due today (or overdue) before confirming.
+            val days = state.daysUntilNext ?: return
+            if (days > 0) return
+            val next = state.nextEvent ?: return
+            ep.schedule().confirm(next.id, ep.clock().now(), ShiftPolicy.KEEP)
+            ep.changeNotifier().notifyChanged()
+        }.onFailure { e ->
+            if (e is CancellationException) throw e
+            Log.e("NoBby", "widget done action failed", e)
+        }
     }
 }

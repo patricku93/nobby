@@ -68,7 +68,7 @@ class HomeViewModelTest {
 
     @After fun tearDown() { Dispatchers.resetMain(); db.close() }
 
-    private fun vm() = HomeViewModel(repo, clock, ScheduleChangeNotifier(setOf(object : ScheduleChangeListener {
+    private fun vm() = HomeViewModel(context, repo, clock, ScheduleChangeNotifier(setOf(object : ScheduleChangeListener {
         override suspend fun onScheduleChanged() { changes++ }
     })), ReminderScheduler(context, repo, ReminderRepository(db.reminderRuleDao()), OverdueConfigStore(ds), clock, ds, Notifier(context)))
 
@@ -120,6 +120,20 @@ class HomeViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals(1, db.eventLogDao().allOnce().size)
         assertEquals(1, changes)
+    }
+
+    @Test
+    fun `done is ignored while the next event is not yet due`() = runTest(dispatcher) {
+        nowValue = LocalDateTime(2026, 11, 21, 21, 0) // REMOVE is planned for 2026-11-22: one day ahead
+        val vm = vm()
+        backgroundScope.launch { vm.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+        vm.uiState.first { it.state != null }
+        vm.onDoneTapped()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertNull(vm.uiState.value.pendingConfirm)
+        assertEquals(0, db.eventLogDao().allOnce().size)
+        assertEquals(0, changes)
     }
 
     @Test

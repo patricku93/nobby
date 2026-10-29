@@ -30,10 +30,13 @@
     <string name="home_skip_pause_cancel">Pause doch einlegen</string>
     <string name="home_overdue_title">Überfällig: %1$s</string>
     <string name="home_overdue_body">Geplant für %1$s. Bitte bestätigen, sobald du es gemacht hast.</string>
-    <string name="home_overdue_safety">Die sichere Frist ist überschritten. Nutze eine zusätzliche Verhütungsmethode und hol dir ärztlichen Rat.</string>
+    <string name="home_overdue_safety_wear">Der Ring ist seit mehr als 28 Tagen drin. Der Schutz kann verringert sein – lies den Beipackzettel; eventuell brauchst du eine zusätzliche Verhütungsmethode. Frag in der Arztpraxis oder Apotheke nach.</string>
+    <string name="home_overdue_safety_pause">Die ringfreie Pause dauert länger als 7 Tage. Der Schutz kann verringert sein – lies den Beipackzettel; eventuell brauchst du eine zusätzliche Verhütungsmethode. Frag in der Arztpraxis oder Apotheke nach.</string>
     <string name="home_snooze">Später</string>
     <string name="confirm_title">Du warst spät dran</string>
     <string name="confirm_body">Geplant war %1$s. Sollen die folgenden Termine um %2$s verschoben werden oder bleiben?</string>
+    <string name="confirm_title_early">Du warst früh dran</string>
+    <string name="confirm_body_early">Geplant war %1$s. Sollen die folgenden Termine um %2$s nach vorn verschoben werden oder bleiben?</string>
     <string name="confirm_shift">Termine verschieben</string>
     <string name="confirm_keep">Plan beibehalten</string>
     <string name="confirm_when">Wann hast du es gemacht?</string>
@@ -73,6 +76,7 @@
     <string name="overdue_snooze">Verschieben um (Stunden)</string>
     <string name="reminder_disabled">aus</string>
     <string name="exact_alarm_warning">Exakte Alarme sind deaktiviert. Erinnerungen können sich verzögern. Tippen zum Erlauben.</string>
+    <string name="notifications_disabled_warning">Benachrichtigungen sind aus. Erinnerungen erscheinen nicht. Tippen zum Aktivieren.</string>
     <string name="channel_low">Leise Erinnerungen</string>
     <string name="channel_normal">Erinnerungen</string>
     <string name="channel_high">Wichtige Erinnerungen</string>
@@ -81,7 +85,9 @@
     <string name="notif_reminder_body">Geplant für %1$s</string>
     <string name="notif_overdue_title">Überfällig: %1$s</string>
     <string name="notif_overdue_body">Geplant für %1$s. Tippe auf Erledigt, sobald du es gemacht hast.</string>
-    <string name="notif_overdue_safety">Sichere Frist überschritten – nutze eine zusätzliche Verhütungsmethode.</string>
+    <string name="notif_overdue_safety_wear">Der Ring ist seit mehr als 28 Tagen drin. Der Schutz kann verringert sein – lies den Beipackzettel; eventuell brauchst du eine zusätzliche Verhütungsmethode. Frag in der Arztpraxis oder Apotheke nach.</string>
+    <string name="notif_overdue_safety_pause">Die ringfreie Pause dauert länger als 7 Tage. Der Schutz kann verringert sein – lies den Beipackzettel; eventuell brauchst du eine zusätzliche Verhütungsmethode. Frag in der Arztpraxis oder Apotheke nach.</string>
+    <string name="notif_overdue_safety_short">Schutz kann verringert sein</string>
     <string name="calendar_notes_title">Notizen – %1$s</string>
     <string name="calendar_notes_hint">Hier schreiben</string>
     <string name="calendar_prev_month">Vorheriger Monat</string>

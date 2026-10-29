@@ -36,10 +36,13 @@
     <string name="home_skip_pause_cancel">Undo skip break</string>
     <string name="home_overdue_title">Overdue: %1$s</string>
     <string name="home_overdue_body">Planned for %1$s. Confirm as soon as you have done it.</string>
-    <string name="home_overdue_safety">More than the safe limit has passed. Use backup contraception and ask your doctor.</string>
+    <string name="home_overdue_safety_wear">The ring has been in for more than 28 days. Protection may be reduced — check your product leaflet; you may need backup contraception. Ask your doctor or pharmacist.</string>
+    <string name="home_overdue_safety_pause">The ring-free break is longer than 7 days. Protection may be reduced — check your product leaflet; you may need backup contraception. Ask your doctor or pharmacist.</string>
     <string name="home_snooze">Snooze</string>
     <string name="confirm_title">You were late</string>
     <string name="confirm_body">This was planned for %1$s. Should the following dates move by %2$s, or stay as planned?</string>
+    <string name="confirm_title_early">You were early</string>
+    <string name="confirm_body_early">This was planned for %1$s. Should the following dates move earlier by %2$s, or stay as planned?</string>
     <string name="confirm_shift">Shift dates</string>
     <string name="confirm_keep">Keep schedule</string>
     <string name="confirm_when">When did you do it?</string>
@@ -83,6 +86,7 @@
     <string name="overdue_snooze">Snooze length (hours)</string>
     <string name="reminder_disabled">off</string>
     <string name="exact_alarm_warning">Exact alarms are disabled. Reminders may be delayed. Tap to allow.</string>
+    <string name="notifications_disabled_warning">Notifications are off. Reminders will not appear. Tap to enable.</string>
 
     <!-- notifications -->
     <string name="channel_low">Quiet reminders</string>
@@ -93,7 +97,9 @@
     <string name="notif_reminder_body">Planned for %1$s</string>
     <string name="notif_overdue_title">Overdue: %1$s</string>
     <string name="notif_overdue_body">Planned for %1$s. Tap Done once you have done it.</string>
-    <string name="notif_overdue_safety">Safe limit exceeded — use backup contraception.</string>
+    <string name="notif_overdue_safety_wear">The ring has been in for more than 28 days. Protection may be reduced — check your product leaflet; you may need backup contraception. Ask your doctor or pharmacist.</string>
+    <string name="notif_overdue_safety_pause">The ring-free break is longer than 7 days. Protection may be reduced — check your product leaflet; you may need backup contraception. Ask your doctor or pharmacist.</string>
+    <string name="notif_overdue_safety_short">Protection may be reduced</string>
 
     <!-- calendar -->
     <string name="calendar_notes_title">Notes – %1$s</string>
