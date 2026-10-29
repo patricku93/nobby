@@ -1,0 +1,58 @@
+package com.nobby.ring.ui.navigation
+
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.nobby.ring.R
+
+@Composable
+fun NobbyNavHost(startDestination: String) {
+    val navController = rememberNavController()
+    val backStack by navController.currentBackStackEntryAsState()
+    val route = backStack?.destination?.route
+    val showBar = route in Routes.topLevel
+
+    Scaffold(
+        bottomBar = {
+            if (showBar) NavigationBar {
+                listOf(
+                    Triple(Routes.HOME, R.string.nav_home, Icons.Default.Home),
+                    Triple(Routes.CALENDAR, R.string.nav_calendar, Icons.Default.CalendarMonth),
+                    Triple(Routes.HISTORY, R.string.nav_history, Icons.Default.History),
+                    Triple(Routes.SETTINGS, R.string.nav_settings, Icons.Default.Settings),
+                ).forEach { (dest, label, icon) ->
+                    NavigationBarItem(
+                        selected = route == dest,
+                        onClick = { navController.navigate(dest) { popUpTo(Routes.HOME) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                        icon = { Icon(icon, contentDescription = null) },
+                        label = { Text(stringResource(label)) },
+                    )
+                }
+            }
+        },
+    ) { padding ->
+        NavHost(navController, startDestination, Modifier.padding(padding)) {
+            composable(Routes.ONBOARDING) { Text("onboarding") }
+            composable(Routes.HOME) { Text("home") }
+            composable(Routes.CALENDAR) { Text("calendar") }
+            composable(Routes.HISTORY) { Text("history") }
+            composable(Routes.SETTINGS) { Text("settings") }
+        }
+    }
+}

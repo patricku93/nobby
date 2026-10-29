@@ -1,4 +1,154 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">NoBby</string>
+
+    <!-- navigation -->
+    <string name="nav_home">Status</string>
+    <string name="nav_calendar">Calendar</string>
+    <string name="nav_history">History</string>
+    <string name="nav_settings">Settings</string>
+    <string name="action_back">Back</string>
+    <string name="action_next">Next</string>
+    <string name="action_skip">Skip</string>
+    <string name="action_done">Done</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_finish">Finish</string>
+
+    <!-- events -->
+    <string name="event_remove">Remove ring</string>
+    <string name="event_insert">Insert new ring</string>
+    <string name="event_swap">Swap ring</string>
+    <string name="phase_wear">Ring in</string>
+    <string name="phase_pause">Ring-free break</string>
+    <string name="cycle_day">Day %1$d of %2$d</string>
+    <string name="phase_day">%1$s · day %2$d of %3$d</string>
+
+    <!-- home -->
+    <string name="home_days_remaining">days remaining</string>
+    <string name="home_day_remaining">day remaining</string>
+    <string name="home_today">today</string>
+    <string name="home_overdue_days">days overdue</string>
+    <string name="home_next_on">%1$s on %2$s</string>
+    <string name="home_mark_done">Done ✓</string>
+    <string name="home_skip_pause">Skip break</string>
+    <string name="home_skip_pause_cancel">Undo skip break</string>
+    <string name="home_overdue_title">Overdue: %1$s</string>
+    <string name="home_overdue_body">Planned for %1$s. Confirm as soon as you have done it.</string>
+    <string name="home_overdue_safety">More than the safe limit has passed. Use backup contraception and ask your doctor.</string>
+    <string name="home_snooze">Snooze</string>
+    <string name="confirm_title">You were late</string>
+    <string name="confirm_body">This was planned for %1$s. Should the following dates move by %2$s, or stay as planned?</string>
+    <string name="confirm_shift">Shift dates</string>
+    <string name="confirm_keep">Keep schedule</string>
+    <string name="confirm_when">When did you do it?</string>
+    <string name="confirm_now">Now</string>
+
+    <!-- onboarding -->
+    <string name="onb_welcome_title">Hi, I\'m NoBby</string>
+    <string name="onb_welcome_body">I remind you when to remove and insert your ring, keep your calendar in sync and nag you if you forget.</string>
+    <string name="onb_schedule_title">Your cycle</string>
+    <string name="onb_wear_days">Ring in for (days)</string>
+    <string name="onb_pause_days">Break (days)</string>
+    <string name="onb_time_of_day">Time of day</string>
+    <string name="onb_safety_wear">More than 28 days of wear may reduce protection.</string>
+    <string name="onb_safety_pause">A break longer than 7 days may reduce protection.</string>
+    <string name="onb_anchor_title">When did the current ring go in?</string>
+    <string name="onb_anchor_date">Date</string>
+    <string name="onb_anchor_time">Time</string>
+    <string name="onb_reminders_title">Reminders</string>
+    <string name="onb_reminders_body">You can change these any time in Settings.</string>
+    <string name="onb_notifications_permission">Allow notifications</string>
+    <string name="onb_look_title">Make it yours</string>
+    <string name="onb_calendar_connect">Connect a calendar</string>
+
+    <!-- reminders -->
+    <string name="reminder_day_before">%1$d day(s) before at %2$s</string>
+    <string name="reminder_same_day">Same day at %1$s</string>
+    <string name="reminder_hours_before">%1$d hour(s) before</string>
+    <string name="reminder_target_any">All events</string>
+    <string name="reminder_target_remove">Removal only</string>
+    <string name="reminder_target_insert">Insertion only</string>
+    <string name="importance_low">Quiet</string>
+    <string name="importance_normal">Normal</string>
+    <string name="importance_high">Loud</string>
+    <string name="importance_urgent">Urgent</string>
+    <string name="reminder_add">Add reminder</string>
+    <string name="reminder_edit">Edit reminder</string>
+    <string name="reminder_mode_days">Days before</string>
+    <string name="reminder_mode_hours">Hours before</string>
+    <string name="reminder_enabled">Enabled</string>
+    <string name="overdue_repeat">Repeat overdue alert every (hours)</string>
+    <string name="overdue_snooze">Snooze length (hours)</string>
+    <string name="exact_alarm_warning">Exact alarms are disabled. Reminders may be delayed. Tap to allow.</string>
+
+    <!-- notifications -->
+    <string name="channel_low">Quiet reminders</string>
+    <string name="channel_normal">Reminders</string>
+    <string name="channel_high">Important reminders</string>
+    <string name="channel_urgent">Overdue alerts</string>
+    <string name="notif_reminder_title">%1$s</string>
+    <string name="notif_reminder_body">Planned for %1$s</string>
+    <string name="notif_overdue_title">Overdue: %1$s</string>
+    <string name="notif_overdue_body">Planned for %1$s. Tap Done once you have done it.</string>
+    <string name="notif_overdue_safety">Safe limit exceeded — use backup contraception.</string>
+
+    <!-- calendar -->
+    <string name="calendar_notes_title">Notes – %1$s</string>
+    <string name="calendar_notes_hint">Write here</string>
+
+    <!-- history -->
+    <string name="history_empty">No confirmed events yet.</string>
+    <string name="history_on_time">on time</string>
+    <string name="history_late">%1$s late</string>
+    <string name="history_early">%1$s early</string>
+
+    <!-- settings -->
+    <string name="settings_schedule">Cycle &amp; schedule</string>
+    <string name="settings_reminders">Reminders</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_calendar">Calendar sync</string>
+    <string name="settings_widget">Widget</string>
+    <string name="settings_about">About</string>
+    <string name="settings_about_body">NoBby %1$s · This app is a reminder tool, not medical advice. Follow your product leaflet and your doctor.</string>
+    <string name="schedule_preview_title">New schedule preview</string>
+    <string name="schedule_preview_body">The next dates will be:</string>
+    <string name="schedule_apply">Apply and update calendar</string>
+    <string name="schedule_horizon">Plan ahead (months)</string>
+    <string name="appearance_palette">Colour</string>
+    <string name="appearance_mode">Mode</string>
+    <string name="mode_system">System</string>
+    <string name="mode_light">Light</string>
+    <string name="mode_dark">Dark</string>
+    <string name="palette_rose">Rose</string>
+    <string name="palette_lavender">Lavender</string>
+    <string name="palette_mint">Mint</string>
+    <string name="palette_ocean">Ocean</string>
+    <string name="palette_graphite">Graphite</string>
+    <string name="calendar_sync_enable">Sync to a calendar</string>
+    <string name="calendar_sync_choose">Choose calendar</string>
+    <string name="calendar_sync_permission">Calendar permission is needed to sync.</string>
+    <string name="calendar_sync_now">Sync now</string>
+    <string name="calendar_sync_last">Last sync: %1$s</string>
+    <string name="calendar_cleanup">Clean up old entries</string>
+    <string name="cleanup_query">Title contains / regex</string>
+    <string name="cleanup_from">From</string>
+    <string name="cleanup_to">To</string>
+    <string name="cleanup_search">Search</string>
+    <string name="cleanup_delete_selected">Delete selected (%1$d)</string>
+    <string name="cleanup_none">No matching entries.</string>
+    <string name="widget_mode">Layout</string>
+    <string name="widget_mode_single">One big countdown</string>
+    <string name="widget_mode_multi">Up to three rows</string>
+    <string name="widget_rows">Rows</string>
+    <string name="widget_row_next_any">Next action</string>
+    <string name="widget_row_next_remove">Next removal</string>
+    <string name="widget_row_next_insert">Next insertion</string>
+    <string name="widget_row_overdue">Overdue</string>
+    <string name="widget_row_cycle_day">Cycle day</string>
+    <string name="widget_description">Countdown to your next ring action</string>
+    <string name="widget_none">All done</string>
+    <string name="widget_in_days">in %1$d d</string>
+    <string name="widget_overdue_days">%1$d d overdue</string>
 </resources>

@@ -4,20 +4,26 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.ui.res.stringResource
+import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nobby.ring.ui.MainViewModel
+import com.nobby.ring.ui.navigation.NobbyNavHost
+import com.nobby.ring.ui.theme.NobbyTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val viewModel: MainViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MaterialTheme {
-                Surface { Text(stringResource(R.string.app_name)) }
+            val theme by viewModel.theme.collectAsStateWithLifecycle()
+            val start by viewModel.startDestination.collectAsStateWithLifecycle()
+            NobbyTheme(theme) {
+                start?.let { NobbyNavHost(it) }
             }
         }
     }
