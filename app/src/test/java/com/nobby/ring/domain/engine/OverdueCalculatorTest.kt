@@ -87,6 +87,18 @@ class OverdueCalculatorTest {
     }
 
     @Test
+    fun `overdue insert with pause of exactly 7 days is not breached`() {
+        val lateRemove = EventLog("REMOVE@2026-11-22T21:00", EventKind.REMOVE, LocalDateTime(2026, 11, 22, 21, 0), LocalDateTime(2026, 11, 23, 9, 0))
+        // INSERT planned 2026-11-29 21:00 is overdue at 2026-11-30 09:00; pause runs from 2026-11-23 09:00, exactly 7 d
+        val atLimit = OverdueCalculator.overdue(config, events, listOf(lateRemove), LocalDateTime(2026, 11, 30, 9, 0))
+        assertEquals(EventKind.INSERT, atLimit!!.event.kind)
+        assertFalse(atLimit.safetyBreached)
+        val over = OverdueCalculator.overdue(config, events, listOf(lateRemove), LocalDateTime(2026, 11, 30, 9, 1))
+        assertEquals(EventKind.INSERT, over!!.event.kind)
+        assertTrue(over.safetyBreached)
+    }
+
+    @Test
     fun `swap overdue uses the wear threshold`() {
         val swapConfig = ScheduleConfig(Method.ring(28, 0, LocalTime(21, 0)), LocalDateTime(2026, 11, 1, 21, 0), 3)
         val swapEvents = ScheduleEngine.generate(swapConfig)
