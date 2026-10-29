@@ -1,0 +1,42 @@
+package com.nobby.ring.domain.engine
+
+import com.nobby.ring.domain.model.EventKind
+import com.nobby.ring.domain.model.ScheduleConfig
+import com.nobby.ring.domain.model.ScheduledEvent
+import com.nobby.ring.domain.model.eventId
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.atTime
+import kotlinx.datetime.plus
+
+object ScheduleEngine {
+
+    fun generate(config: ScheduleConfig): List<ScheduledEvent> {
+        val method = config.method
+        val horizonEnd = config.anchor.date.plus(config.horizonMonths, DateTimeUnit.MONTH).atTime(config.anchor.time)
+        val events = mutableListOf<ScheduledEvent>()
+        var cycleStart = config.anchor
+        var cycleIndex = 0
+        var skipPause = config.skipPauseOnce
+
+        while (true) {
+            val removeAt = cycleStart.date.plus(method.wearDays, DateTimeUnit.DAY).atTime(method.timeOfDay)
+            if (removeAt >= horizonEnd) break
+
+            val swap = method.pauseDays == 0 || skipPause
+            if (swap) {
+                events += ScheduledEvent(eventId(EventKind.SWAP, removeAt), EventKind.SWAP, removeAt, cycleIndex, cycleStart)
+                skipPause = false
+                cycleStart = removeAt
+            } else {
+                events += ScheduledEvent(eventId(EventKind.REMOVE, removeAt), EventKind.REMOVE, removeAt, cycleIndex, cycleStart)
+                val insertAt = removeAt.date.plus(method.pauseDays, DateTimeUnit.DAY).atTime(method.timeOfDay)
+                if (insertAt >= horizonEnd) break
+                events += ScheduledEvent(eventId(EventKind.INSERT, insertAt), EventKind.INSERT, insertAt, cycleIndex, cycleStart)
+                cycleStart = insertAt
+            }
+            cycleIndex += 1
+        }
+        return events.toList()
+    }
+}
