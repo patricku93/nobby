@@ -13,5 +13,16 @@ class CalendarSyncWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val syncer: CalendarSyncer,
 ) : CoroutineWorker(context, params) {
-    override suspend fun doWork(): Result = if (syncer.syncNow().isSuccess) Result.success() else Result.retry()
+    override suspend fun doWork(): Result {
+        val outcome = syncer.syncNow()
+        return when {
+            outcome.isSuccess -> Result.success()
+            // Permission revoked: retrying cannot help until the user grants it again.
+            outcome.exceptionOrNull() is SecurityException -> Result.failure()
+            runAttemptCount >= MAX_ATTEMPTS -> Result.failure()
+            else -> Result.retry()
+        }
+    }
+
+    private companion object { const val MAX_ATTEMPTS = 3 }
 }

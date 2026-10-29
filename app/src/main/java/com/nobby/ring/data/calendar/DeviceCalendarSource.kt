@@ -4,6 +4,7 @@ import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.provider.CalendarContract
+import android.util.Log
 import com.nobby.ring.domain.engine.CalendarEntry
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +21,7 @@ interface CalendarSource {
     suspend fun listWritable(): List<DeviceCalendar>
     suspend fun insert(calendarId: Long, entry: CalendarEntry, zone: TimeZone): Long
     suspend fun update(providerId: Long, entry: CalendarEntry, zone: TimeZone)
-    suspend fun delete(providerId: Long)
+    suspend fun delete(providerId: Long): Boolean
     suspend fun search(calendarId: Long, pattern: Regex, fromMillis: Long, toMillis: Long): List<FoundEvent>
 }
 
@@ -39,9 +40,14 @@ class DeviceCalendarSource @Inject constructor(@ApplicationContext private val c
     }
 
     override suspend fun insert(calendarId: Long, entry: CalendarEntry, zone: TimeZone): Long = withContext(Dispatchers.IO) {
-        val uri = resolver.insert(CalendarContract.Events.CONTENT_URI, values(entry, zone).apply { put(CalendarContract.Events.CALENDAR_ID, calendarId) })
-            ?: throw IllegalStateException("Calendar insert failed")
-        ContentUris.parseId(uri)
+        try {
+            val uri = resolver.insert(CalendarContract.Events.CONTENT_URI, values(entry, zone).apply { put(CalendarContract.Events.CALENDAR_ID, calendarId) })
+                ?: throw IllegalStateException("Calendar insert failed")
+            ContentUris.parseId(uri)
+        } catch (e: Exception) {
+            Log.e("NoBby", "Calendar insert failed for calendar $calendarId", e)
+            throw e
+        }
     }
 
     override suspend fun update(providerId: Long, entry: CalendarEntry, zone: TimeZone) = withContext(Dispatchers.IO) {
@@ -49,9 +55,8 @@ class DeviceCalendarSource @Inject constructor(@ApplicationContext private val c
         Unit
     }
 
-    override suspend fun delete(providerId: Long) = withContext(Dispatchers.IO) {
-        resolver.delete(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, providerId), null, null)
-        Unit
+    override suspend fun delete(providerId: Long): Boolean = withContext(Dispatchers.IO) {
+        resolver.delete(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, providerId), null, null) >= 1
     }
 
     override suspend fun search(calendarId: Long, pattern: Regex, fromMillis: Long, toMillis: Long): List<FoundEvent> = withContext(Dispatchers.IO) {

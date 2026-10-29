@@ -1,6 +1,7 @@
 package com.nobby.ring.data.calendar
 
 import android.content.Context
+import android.util.Log
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -17,9 +18,11 @@ import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.notifications.ScheduleChangeListener
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -62,24 +65,62 @@ class CalendarSyncer @Inject constructor(
                 source.delete(it.providerEventId)
                 linkDao.delete(listOf(it.eventId))
             }
+            // NonCancellable: a REPLACE-cancelled worker must not leave a provider write without its link.
             diff.update.forEach { (link, entry) ->
-                source.update(link.providerEventId, entry, clock.zone)
-                linkDao.upsert(listOf(CalendarLinkEntity(entry.eventId, link.providerEventId, entry.startAt.toString(), entry.title)))
+                withContext(NonCancellable) {
+                    source.update(link.providerEventId, entry, clock.zone)
+                    linkDao.upsert(listOf(CalendarLinkEntity(entry.eventId, link.providerEventId, entry.startAt.toString(), entry.title)))
+                }
             }
             diff.create.forEach { entry ->
-                val id = source.insert(calendarId, entry, clock.zone)
-                linkDao.upsert(listOf(CalendarLinkEntity(entry.eventId, id, entry.startAt.toString(), entry.title)))
+                withContext(NonCancellable) {
+                    val id = source.insert(calendarId, entry, clock.zone)
+                    linkDao.upsert(listOf(CalendarLinkEntity(entry.eventId, id, entry.startAt.toString(), entry.title)))
+                }
             }
             syncStore.markSynced(clock.now())
             diff.create.size + diff.update.size + diff.delete.size
         }
-    }.onFailure { if (it is CancellationException) throw it }
+    }.onFailure {
+        if (it is CancellationException) throw it
+        Log.e("NoBby", "Calendar sync failed", it)
+    }
 
     /** Deletes every linked provider event, clears the links and turns sync off. */
     suspend fun disconnect() = mutex.withLock {
-        linkDao.allOnce().forEach { runCatching { source.delete(it.providerEventId) } }
-        linkDao.clear()
+        deleteLinkedEventsLocked()
         syncStore.save(enabled = false, calendarId = null)
+    }
+
+    /**
+     * Deletes every linked provider event and clears the links, leaving [CalendarSyncStore] untouched
+     * (used when switching calendars so the enabled switch does not flicker).
+     */
+    suspend fun clearLinks() = mutex.withLock { deleteLinkedEventsLocked() }
+
+    /**
+     * Drops the links whose provider event id is in [providerIds], for events removed outside the sync
+     * (for example by the clean-up tool). Does NOT trigger a sync: NoBby's own events that are still
+     * pending are recreated by the next schedule change or "Sync now".
+     */
+    suspend fun forget(providerIds: Collection<Long>) = mutex.withLock {
+        if (providerIds.isEmpty()) return@withLock
+        val ids = providerIds.toSet()
+        val eventIds = linkDao.allOnce().filter { it.providerEventId in ids }.map { it.eventId }
+        if (eventIds.isNotEmpty()) linkDao.delete(eventIds)
+    }
+
+    private suspend fun deleteLinkedEventsLocked() {
+        linkDao.allOnce().forEach {
+            try {
+                source.delete(it.providerEventId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("NoBby", "Failed to delete calendar event ${it.providerEventId}", e)
+            }
+        }
+        linkDao.clear()
     }
 
     private fun titleFor(kind: EventKind): String = context.getString(

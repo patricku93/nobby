@@ -122,6 +122,10 @@
     <string name="cleanup_search">Suchen</string>
     <string name="cleanup_delete_selected">Ausgewählte löschen (%1$d)</string>
     <string name="cleanup_none">Keine passenden Einträge.</string>
+    <string name="cleanup_delete_failed">Einige Einträge konnten nicht gelöscht werden.</string>
+    <string name="cleanup_select_all">Alle auswählen</string>
+    <string name="cleanup_confirm_title">%1$d Einträge löschen?</string>
+    <string name="cleanup_confirm_body">Das entfernt sie aus deinem Kalender und kann nicht rückgängig gemacht werden.</string>
     <string name="widget_mode">Layout</string>
     <string name="widget_mode_single">Ein großer Countdown</string>
     <string name="widget_mode_multi">Bis zu drei Zeilen</string>

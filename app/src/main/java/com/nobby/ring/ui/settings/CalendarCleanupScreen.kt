@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -16,12 +17,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -38,6 +44,7 @@ import kotlinx.datetime.toLocalDateTime
 @Composable
 fun CalendarCleanupScreen(onBack: () -> Unit, viewModel: CalendarSettingsViewModel = hiltViewModel()) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
+    var confirming by remember { mutableStateOf(false) }
     Scaffold(topBar = {
         TopAppBar(
             title = { Text(stringResource(R.string.calendar_cleanup)) },
@@ -52,6 +59,7 @@ fun CalendarCleanupScreen(onBack: () -> Unit, viewModel: CalendarSettingsViewMod
             }
             Button(onClick = { viewModel.search() }, enabled = ui.query.isNotBlank()) { Text(stringResource(R.string.cleanup_search)) }
             if (ui.results.isEmpty()) Text(stringResource(R.string.cleanup_none), Modifier.padding(top = 16.dp))
+            else OutlinedButton(onClick = { viewModel.toggleSelectAll() }, Modifier.padding(top = 8.dp)) { Text(stringResource(R.string.cleanup_select_all)) }
             ui.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             LazyColumn(Modifier.weight(1f)) {
                 items(ui.results, key = { it.id }) { r ->
@@ -62,9 +70,20 @@ fun CalendarCleanupScreen(onBack: () -> Unit, viewModel: CalendarSettingsViewMod
                     )
                 }
             }
-            Button(onClick = { viewModel.deleteSelected() }, enabled = ui.selectedResults.isNotEmpty(), modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { confirming = true }, enabled = ui.selectedResults.isNotEmpty(), modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.cleanup_delete_selected, ui.selectedResults.size))
             }
         }
+    }
+    if (confirming) {
+        AlertDialog(
+            onDismissRequest = { confirming = false },
+            title = { Text(stringResource(R.string.cleanup_confirm_title, ui.selectedResults.size)) },
+            text = { Text(stringResource(R.string.cleanup_confirm_body)) },
+            confirmButton = {
+                TextButton(onClick = { confirming = false; viewModel.deleteSelected() }) { Text(stringResource(R.string.action_delete)) }
+            },
+            dismissButton = { TextButton(onClick = { confirming = false }) { Text(stringResource(R.string.action_cancel)) } },
+        )
     }
 }

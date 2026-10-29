@@ -140,6 +140,10 @@
     <string name="cleanup_search">Search</string>
     <string name="cleanup_delete_selected">Delete selected (%1$d)</string>
     <string name="cleanup_none">No matching entries.</string>
+    <string name="cleanup_delete_failed">Some entries could not be deleted.</string>
+    <string name="cleanup_select_all">Select all</string>
+    <string name="cleanup_confirm_title">Delete %1$d entries?</string>
+    <string name="cleanup_confirm_body">This removes them from your calendar. It cannot be undone.</string>
     <string name="widget_mode">Layout</string>
     <string name="widget_mode_single">One big countdown</string>
     <string name="widget_mode_multi">Up to three rows</string>

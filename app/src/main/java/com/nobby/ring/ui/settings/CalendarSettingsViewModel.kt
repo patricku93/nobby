@@ -3,9 +3,11 @@ package com.nobby.ring.ui.settings
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nobby.ring.R
 import com.nobby.ring.data.calendar.CalendarSource
 import com.nobby.ring.data.calendar.CalendarSyncer
 import com.nobby.ring.data.calendar.DeviceCalendar
@@ -14,6 +16,7 @@ import com.nobby.ring.data.prefs.CalendarSyncStore
 import com.nobby.ring.domain.NobbyClock
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -64,7 +67,10 @@ class CalendarSettingsViewModel @Inject constructor(
         if (granted) viewModelScope.launch {
             runCatching { source.listWritable() }
                 .onSuccess { list -> local.update { it.copy(calendars = list) } }
-                .onFailure { e -> local.update { it.copy(error = e.message) } }
+                .onFailure { e ->
+                    Log.e("NoBby", "Failed to list writable calendars", e)
+                    local.update { it.copy(error = e.message) }
+                }
         }
     }
 
@@ -79,8 +85,8 @@ class CalendarSettingsViewModel @Inject constructor(
 
     fun select(id: Long) = viewModelScope.launch {
         val previous = uiState.value.selectedId
-        // Events already written to the previous calendar must be removed before switching.
-        if (previous != null && previous != id) syncer.disconnect()
+        // Events already written to the previous calendar must be removed before switching (store stays enabled).
+        if (previous != null && previous != id) syncer.clearLinks()
         store.save(true, id)
         syncNow().join()
     }
@@ -88,7 +94,10 @@ class CalendarSettingsViewModel @Inject constructor(
     fun syncNow() = viewModelScope.launch {
         syncer.syncNow()
             .onSuccess { local.update { it.copy(error = null) } }
-            .onFailure { e -> local.update { it.copy(error = e.message) } }
+            .onFailure { e ->
+                Log.e("NoBby", "Calendar sync failed", e)
+                local.update { it.copy(error = e.message) }
+            }
     }
 
     fun setQuery(q: String) = local.update { it.copy(query = q) }
@@ -102,16 +111,42 @@ class CalendarSettingsViewModel @Inject constructor(
         val from = s.from.atStartOfDayIn(clock.zone).toEpochMilliseconds()
         val to = s.to.atTime(23, 59).toInstant(clock.zone).toEpochMilliseconds()
         runCatching { source.search(id, regex, from, to) }
-            .onSuccess { r -> local.update { it.copy(results = r, selectedResults = r.map { f -> f.id }.toSet(), error = null) } }
-            .onFailure { e -> local.update { it.copy(error = e.message) } }
+            .onSuccess { r -> local.update { it.copy(results = r, selectedResults = emptySet(), error = null) } }
+            .onFailure { e ->
+                Log.e("NoBby", "Calendar search failed", e)
+                local.update { it.copy(error = e.message) }
+            }
     }
 
     fun toggleSelection(id: Long) = local.update { it.copy(selectedResults = if (id in it.selectedResults) it.selectedResults - id else it.selectedResults + id) }
 
+    fun toggleSelectAll() = local.update {
+        val all = it.results.map { f -> f.id }.toSet()
+        it.copy(selectedResults = if (it.selectedResults == all) emptySet() else all)
+    }
+
     fun deleteSelected() = viewModelScope.launch {
         val ids = uiState.value.selectedResults
-        ids.forEach { runCatching { source.delete(it) } }
-        local.update { it.copy(results = it.results.filter { r -> r.id !in ids }, selectedResults = emptySet()) }
+        val succeeded = ids.filter { id ->
+            try {
+                source.delete(id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("NoBby", "Failed to delete calendar event $id", e)
+                false
+            }
+        }.toSet()
+        // Links to events removed outside the sync would otherwise go stale.
+        runCatching { syncer.forget(succeeded) }.onFailure { Log.e("NoBby", "Failed to forget deleted calendar links", it) }
+        val failed = ids - succeeded
+        local.update {
+            it.copy(
+                results = it.results.filter { r -> r.id !in succeeded },
+                selectedResults = failed,
+                error = if (failed.isEmpty()) null else context.getString(R.string.cleanup_delete_failed),
+            )
+        }
     }
 
     private fun hasPermission() =
