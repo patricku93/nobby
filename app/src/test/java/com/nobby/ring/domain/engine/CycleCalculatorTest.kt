@@ -35,7 +35,7 @@ class CycleCalculatorTest {
 
     @Test
     fun `pause day 3 when remove was confirmed`() {
-        val removeLog = EventLog("REMOVE@2026-11-22T21:00", EventKind.REMOVE, LocalDateTime(2026, 11, 22, 21, 0), LocalDateTime(2026, 11, 22, 21, 5))
+        val removeLog = EventLog("REMOVE@2026-11-22T21:00", EventKind.REMOVE, LocalDateTime(2026, 11, 22, 21, 0), LocalDateTime(2026, 11, 23, 9, 0))
         val p = CycleCalculator.positionAt(config, listOf(removeLog), LocalDateTime(2026, 11, 24, 23, 0))
         assertEquals(PhaseKind.PAUSE, p.phase)
         assertEquals(24, p.dayInCycle)
@@ -48,6 +48,24 @@ class CycleCalculatorTest {
     fun `ring still counted as in while remove is unconfirmed`() {
         val p = CycleCalculator.positionAt(config, emptyList(), LocalDateTime(2026, 11, 24, 23, 0))
         assertTrue(p.ringIn)
+        assertEquals(PhaseKind.WEAR, p.phase)
+    }
+
+    @Test
+    fun `now before anchor yields day 1`() {
+        val future = ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 10, 21, 0))
+        val p = CycleCalculator.positionAt(future, emptyList(), LocalDateTime(2026, 11, 5, 12, 0))
+        assertEquals(1, p.dayInCycle)
+        assertEquals(1, p.dayInPhase)
+        assertEquals(PhaseKind.WEAR, p.phase)
+        assertTrue(p.ringIn)
+    }
+
+    @Test
+    fun `overdue remove reports day beyond phase length`() {
+        val p = CycleCalculator.positionAt(config, emptyList(), LocalDateTime(2026, 11, 24, 23, 0))
+        assertEquals(24, p.dayInPhase)
+        assertEquals(21, p.phaseLengthDays)
         assertEquals(PhaseKind.WEAR, p.phase)
     }
 }

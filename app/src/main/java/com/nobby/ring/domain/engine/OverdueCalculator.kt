@@ -21,6 +21,7 @@ object OverdueCalculator {
         return events.firstOrNull { it.id !in logged }
     }
 
+    /** Wear is measured from the planned cycle start; pause from the actual REMOVE confirmation when logged, else from the planned remove time. */
     fun overdue(config: ScheduleConfig, events: List<ScheduledEvent>, logs: List<EventLog>, now: LocalDateTime): OverdueInfo? {
         val pending = nextPending(events, logs) ?: return null
         if (pending.plannedAt >= now) return null
@@ -29,7 +30,7 @@ object OverdueCalculator {
             EventKind.REMOVE, EventKind.SWAP -> between(pending.cycleStart, now) > ScheduleConfig.SAFE_MAX_WEAR.days
             EventKind.INSERT -> {
                 val removedAt = logs.firstOrNull { it.kind == EventKind.REMOVE && it.plannedAt >= pending.cycleStart }?.confirmedAt
-                    ?: pending.cycleStart.let { config.removeTimeFor(it) }
+                    ?: config.removeTimeFor(pending.cycleStart)
                 between(removedAt, now) > ScheduleConfig.SAFE_MAX_PAUSE.days
             }
         }
