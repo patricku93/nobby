@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.nobby.ring.notifications.Channels
+import com.nobby.ring.widget.WidgetWorker
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -17,5 +18,6 @@ class NobbyApp : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         Channels.create(this)
+        WidgetWorker.schedule(this)
     }
 }
