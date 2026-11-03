@@ -1,4 +1,5 @@
 package com.nobby.ring.ui.settings
+import com.nobby.ring.ui.components.NobbyTopBar
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,7 +16,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -34,7 +34,7 @@ import com.nobby.ring.domain.model.WidgetRow
 fun WidgetSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
     val cfg by viewModel.widget.collectAsStateWithLifecycle()
     Scaffold(topBar = {
-        TopAppBar(
+        NobbyTopBar(
             title = { Text(stringResource(R.string.settings_widget)) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back)) } },
         )

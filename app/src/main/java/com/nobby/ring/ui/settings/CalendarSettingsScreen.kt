@@ -1,4 +1,6 @@
 package com.nobby.ring.ui.settings
+import com.nobby.ring.ui.components.NobbyButton
+import com.nobby.ring.ui.components.NobbyTopBar
 
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -12,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -23,7 +24,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,7 +44,7 @@ fun CalendarSettingsScreen(onBack: () -> Unit, onCleanup: () -> Unit, viewModel:
     LaunchedEffect(Unit) { viewModel.refreshPermission() }
 
     Scaffold(topBar = {
-        TopAppBar(
+        NobbyTopBar(
             title = { Text(stringResource(R.string.settings_calendar)) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back)) } },
         )
@@ -52,7 +52,7 @@ fun CalendarSettingsScreen(onBack: () -> Unit, onCleanup: () -> Unit, viewModel:
         Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
             if (!ui.permissionGranted) {
                 Text(stringResource(R.string.calendar_sync_permission))
-                Button(onClick = { launcher.launch(arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)) }) {
+                NobbyButton(onClick = { launcher.launch(arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)) }) {
                     Text(stringResource(R.string.onb_calendar_connect))
                 }
                 return@Column

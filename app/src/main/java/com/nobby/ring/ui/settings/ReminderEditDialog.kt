@@ -1,11 +1,12 @@
 package com.nobby.ring.ui.settings
+import com.nobby.ring.ui.components.nobbySegmentedColors
+import com.nobby.ring.ui.components.NobbyButton
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -43,7 +44,7 @@ fun ReminderEditDialog(initial: ReminderRule, onSave: (ReminderRule) -> Unit, on
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                     ReminderTarget.entries.forEachIndexed { i, t ->
-                        SegmentedButton(selected = rule.target == t, onClick = { rule = rule.copy(target = t) }, shape = SegmentedButtonDefaults.itemShape(i, ReminderTarget.entries.size)) {
+                        SegmentedButton(selected = rule.target == t, onClick = { rule = rule.copy(target = t) }, shape = SegmentedButtonDefaults.itemShape(i, ReminderTarget.entries.size), colors = nobbySegmentedColors()) {
                             Text(stringResource(when (t) { ReminderTarget.ANY -> R.string.reminder_target_any; ReminderTarget.REMOVE -> R.string.reminder_target_remove; ReminderTarget.INSERT -> R.string.reminder_target_insert }))
                         }
                     }
@@ -69,7 +70,7 @@ fun ReminderEditDialog(initial: ReminderRule, onSave: (ReminderRule) -> Unit, on
                 }
             }
         },
-        confirmButton = { Button(onClick = { onSave(rule) }) { Text(stringResource(R.string.action_save)) } },
+        confirmButton = { NobbyButton(onClick = { onSave(rule) }) { Text(stringResource(R.string.action_save)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }

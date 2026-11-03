@@ -1,4 +1,6 @@
 package com.nobby.ring.ui.settings
+import com.nobby.ring.ui.components.NobbyButton
+import com.nobby.ring.ui.components.NobbyTopBar
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,7 +12,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -22,7 +23,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,7 +47,7 @@ fun CalendarCleanupScreen(onBack: () -> Unit, viewModel: CalendarSettingsViewMod
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     var confirming by remember { mutableStateOf(false) }
     Scaffold(topBar = {
-        TopAppBar(
+        NobbyTopBar(
             title = { Text(stringResource(R.string.calendar_cleanup)) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back)) } },
         )
@@ -58,7 +58,7 @@ fun CalendarCleanupScreen(onBack: () -> Unit, viewModel: CalendarSettingsViewMod
                 DatePickerField(ui.from, viewModel::setFrom, stringResource(R.string.cleanup_from), Modifier.weight(1f))
                 DatePickerField(ui.to, viewModel::setTo, stringResource(R.string.cleanup_to), Modifier.weight(1f))
             }
-            Button(onClick = { viewModel.search() }, enabled = ui.query.isNotBlank()) { Text(stringResource(R.string.cleanup_search)) }
+            NobbyButton(onClick = { viewModel.search() }, enabled = ui.query.isNotBlank()) { Text(stringResource(R.string.cleanup_search)) }
             if (ui.results.isEmpty()) Text(stringResource(R.string.cleanup_none), Modifier.padding(top = 16.dp))
             else OutlinedButton(onClick = { viewModel.toggleSelectAll() }, Modifier.padding(top = 8.dp)) { Text(stringResource(R.string.cleanup_select_all)) }
             ui.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -71,7 +71,7 @@ fun CalendarCleanupScreen(onBack: () -> Unit, viewModel: CalendarSettingsViewMod
                     )
                 }
             }
-            Button(onClick = { confirming = true }, enabled = ui.selectedResults.isNotEmpty(), modifier = Modifier.fillMaxWidth()) {
+            NobbyButton(onClick = { confirming = true }, enabled = ui.selectedResults.isNotEmpty(), modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.cleanup_delete_selected, ui.selectedResults.size))
             }
         }

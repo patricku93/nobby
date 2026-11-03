@@ -1,11 +1,11 @@
 package com.nobby.ring.ui.home
+import com.nobby.ring.ui.components.NobbyButton
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,9 +52,9 @@ fun ConfirmDialog(
         },
         confirmButton = {
             if (early) {
-                Button(onClick = { onPolicy(ShiftPolicy.KEEP) }) { Text(stringResource(R.string.action_done)) }
+                NobbyButton(onClick = { onPolicy(ShiftPolicy.KEEP) }) { Text(stringResource(R.string.action_done)) }
             } else {
-                Button(onClick = { onPolicy(ShiftPolicy.SHIFT) }) { Text(stringResource(R.string.confirm_shift)) }
+                NobbyButton(onClick = { onPolicy(ShiftPolicy.SHIFT) }) { Text(stringResource(R.string.confirm_shift)) }
             }
         },
         dismissButton = {

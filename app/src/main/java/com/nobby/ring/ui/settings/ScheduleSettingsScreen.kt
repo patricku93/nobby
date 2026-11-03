@@ -1,4 +1,6 @@
 package com.nobby.ring.ui.settings
+import com.nobby.ring.ui.components.NobbyButton
+import com.nobby.ring.ui.components.NobbyTopBar
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,7 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -19,7 +20,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,7 +45,7 @@ fun ScheduleSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hi
     val d = draft ?: return
 
     Scaffold(topBar = {
-        TopAppBar(
+        NobbyTopBar(
             title = { Text(stringResource(R.string.settings_schedule)) },
             navigationIcon = { IconButton(onClick = { viewModel.discardDraft(); onBack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back)) } },
         )
@@ -74,7 +74,7 @@ fun ScheduleSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hi
                     d.preview.forEach { e -> Text(stringResource(R.string.schedule_preview_row, e.kind.label(), formatDateTime(e.plannedAt))) }
                 }
             }
-            Button(onClick = { viewModel.applyDraft(); onBack() }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.schedule_apply)) }
+            NobbyButton(onClick = { viewModel.applyDraft(); onBack() }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.schedule_apply)) }
         }
     }
 }
