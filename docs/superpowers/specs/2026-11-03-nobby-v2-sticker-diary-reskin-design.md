@@ -39,7 +39,7 @@ activity, cloud, iOS.
 - Migration in `ThemeStore` when reading the stored name: `ROSE→BERRY`, `LAVENDER→LILAC`, `MINT→MATCHA`, `OCEAN→BLUEBERRY`, `GRAPHITE→BERRY`, unknown → `BERRY`. Writing always uses the new names.
 - `ui/theme/Palettes.kt` is rewritten: no derived/alpha-blended colours. Each preset is a hand-specified table of all 41 Material 3 roles for light and dark, copied verbatim from `tokens.json` `presets.<id>.<light|dark>` (Berry = `color.light` / `color.dark`).
 - `ui/theme/NobbyColors.kt` (new): an immutable `NobbyExtraColors` (wearBand, pauseBand, sticker/butter, mascotBody, mascotCheek, mascotRim, overdue, overdueContainer) provided through a `staticCompositionLocalOf` and read via `NobbyTheme.extra`. Values per preset × mode, from the same token tables.
-- Semantics that hold in every preset: `primary` = wear phase + primary action, `secondary` = pause, `error` = overdue (tomato family), `inverseSurface` = selection. Never decoration-only colour.
+- Semantics that hold in every preset: `primary` = wear phase + primary action, `secondary` = pause, `error` = overdue (tomato family), `inverseSurface` = selection. Never decoration-only colour. Preset exceptions from the bundle: Matcha's pause (`secondary`) is soft blue `#386D87` so it never reads as its green primary; Peach's `error` is the redder `#B92536` so overdue never reads as apricot.
 - A unit test asserts every preset × mode passes the 30 contrast pairs listed in the design report (4.5:1 body, 3:1 large/UI), so a future colour edit cannot silently break contrast.
 - Widget reads the same tables (`Palette.widgetColors(dark)`), replacing `Palette.accent()`.
 
@@ -62,10 +62,10 @@ activity, cloud, iOS.
 - Composable `Nobby(mood, size, prop?)` in `ui/components/`.
 - Moments (one mascot per screen max):
   - Home: sticker on the ring — happy (wear), sleepy (pause), neutral (due today), worried (overdue), alert (safety threshold crossed).
-  - Done celebration sheet (new): after any confirmation on Home or from the overdue card, a bottom sheet with "yay" + confetti doodles and a short line ("Erledigt! Gut gemacht 💗" / "Done! Nice one"), auto-dismisses after ~2.5 s, tap to close. Not shown for confirmations made from a notification.
+  - Done celebration sheet (new): after any confirmation on Home or from the overdue card, a bottom sheet with "yay" + confetti doodles and a short line ("Erledigt! Gut gemacht 💗" / "Done! Nice one"), auto-dismisses after 4 s, tap or swipe to close. The bundle mockup also shows an "Rückgängig" (undo) button: OPEN QUESTION for the owner — undo needs a new domain operation (remove the log entry and revert any anchor shift); without approval it is left out. Not shown for confirmations made from a notification.
   - Onboarding: one illustration per step (wave, calendar, bell, palette).
   - History empty state, Calendar selected day without note (small, subtle), Settings > About header.
-  - Notification large icon: flat rim-less face, 96×96 bitmap per mood (normal reminder = happy, overdue = worried, safety = alert). Small icon becomes a new monochrome ring glyph (`ic_stat_nobby`) — the current small icon is the launcher foreground, which Android renders as a blob.
+  - Notification large icon: flat rim-less face exported as 96×96 PNGs, one per preset × mood (happy for reminders, worried for overdue and safety) = 10 bitmaps, chosen from the active preset. Small icon becomes a new monochrome ring glyph (`ic_stat_nobby`) — the current small icon is the launcher foreground, which Android renders as a blob.
   - Widget: flat face at 2×2 and 4×2.
 - Accessibility: the mascot is decorative (`contentDescription = null`) everywhere except the Done sheet, where the line of text carries the meaning.
 
