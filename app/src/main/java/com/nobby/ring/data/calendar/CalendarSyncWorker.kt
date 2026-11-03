@@ -17,6 +17,8 @@ class CalendarSyncWorker @AssistedInject constructor(
         val outcome = syncer.syncNow()
         return when {
             outcome.isSuccess -> Result.success()
+            // Calendar deleted: settings shows the hint, retrying cannot help until the user picks another one.
+            outcome.exceptionOrNull() is CalendarUnavailableException -> Result.failure()
             // Permission revoked: retrying cannot help until the user grants it again.
             outcome.exceptionOrNull() is SecurityException -> Result.failure()
             runAttemptCount >= MAX_ATTEMPTS -> Result.failure()

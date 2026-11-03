@@ -53,6 +53,12 @@ class CalendarSyncer @Inject constructor(
         mutex.withLock {
             if (!syncStore.enabled.first()) return@withLock 0
             val calendarId = syncStore.calendarId.first() ?: return@withLock 0
+            // The calendar may have been deleted or made read-only outside the app: write nothing, keep lastSync,
+            // and drop the links (their provider events went with the calendar) so a later pick starts clean.
+            if (source.listWritable().none { it.id == calendarId }) {
+                linkDao.clear()
+                throw CalendarUnavailableException(calendarId)
+            }
             val state = schedule.currentState() ?: return@withLock 0
             val desired = state.pendingEvents.map { e ->
                 CalendarEntry(e.id, titleFor(e.kind), e.plannedAt, 30, CalendarEntry.marker(e.id))
@@ -88,6 +94,7 @@ class CalendarSyncer @Inject constructor(
         }
     }.onFailure {
         if (it is CancellationException) throw it
+        if (it is CalendarUnavailableException) { Log.w("NoBby", "Selected calendar is gone"); return@onFailure }
         Log.e("NoBby", "Calendar sync failed", it)
     }
 

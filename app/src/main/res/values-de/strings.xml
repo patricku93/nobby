@@ -253,6 +253,8 @@
     <string name="calendar_sync_now">Jetzt abgleichen</string>
     <string name="calendar_sync_last">Zuletzt abgeglichen: %1$s</string>
     <string name="calendar_cleanup">Alte Einträge aufräumen</string>
+    <string name="calendar_sync_gone">Dein Kalender ist nicht mehr da. Such dir einen anderen aus, dann geht\'s weiter.</string>
+    <string name="calendar_sync_pick_hint">Such dir einen Kalender aus. Vorher trägt NoBby nichts ein.</string>
     <string name="cleanup_query">Titel enthält / Regex</string>
     <string name="cleanup_from">Von</string>
     <string name="cleanup_to">Bis</string>

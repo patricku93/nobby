@@ -31,7 +31,8 @@ import java.io.File
 class FakeCalendarSource : CalendarSource {
     val events = linkedMapOf<Long, CalendarEntry>()
     private var nextId = 100L
-    override suspend fun listWritable() = listOf(DeviceCalendar(1, "Test", "test@example.com", 0))
+    var calendars = listOf(DeviceCalendar(1, "Test", "test@example.com", 0))
+    override suspend fun listWritable() = calendars
     override suspend fun insert(calendarId: Long, entry: CalendarEntry, zone: TimeZone): Long { val id = nextId++; events[id] = entry; return id }
     override suspend fun update(providerId: Long, entry: CalendarEntry, zone: TimeZone): Int {
         if (providerId !in events) return 0
@@ -126,6 +127,41 @@ class CalendarSyncerTest {
         assertNotEquals(999L, relinked.providerEventId)
         assertTrue(relinked.providerEventId in source.events)
         assertEquals(4, source.events.size)
+        assertEquals(4, linkDao.allOnce().size)
+    }
+
+    @Test
+    fun `a stored calendar that no longer exists fails without writing, keeps lastSync and clears the links`() = runTest {
+        syncer.syncNow().getOrThrow()
+        val lastBefore = syncStore.lastSync.first()
+        source.calendars = emptyList()
+        val before = source.events.toMap()
+        schedule.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(8, 0)), LocalDateTime(2026, 11, 1, 8, 0), 2))
+
+        val result = syncer.syncNow()
+
+        assertTrue(result.exceptionOrNull() is CalendarUnavailableException)
+        assertEquals(before, source.events.toMap())
+        assertEquals(lastBefore, syncStore.lastSync.first())
+        assertEquals(0, linkDao.allOnce().size)
+        assertEquals(true, syncStore.enabled.first())
+    }
+
+    @Test
+    fun `a calendar that is no longer in the writable list is treated as gone`() = runTest {
+        source.calendars = listOf(DeviceCalendar(7, "Other", "x", 0))
+        assertTrue(syncer.syncNow().exceptionOrNull() is CalendarUnavailableException)
+        assertEquals(0, source.events.size)
+        assertEquals(null, syncStore.lastSync.first())
+    }
+
+    @Test
+    fun `picking another calendar after the loss recovers`() = runTest {
+        syncer.syncNow().getOrThrow()
+        source.calendars = listOf(DeviceCalendar(2, "Other", "x", 0))
+        assertTrue(syncer.syncNow().isFailure)
+        syncStore.save(enabled = true, calendarId = 2)
+        assertEquals(4, syncer.syncNow().getOrThrow())
         assertEquals(4, linkDao.allOnce().size)
     }
 }

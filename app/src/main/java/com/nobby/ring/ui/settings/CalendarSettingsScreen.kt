@@ -5,6 +5,14 @@ import com.nobby.ring.ui.components.NobbyTopBar
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,13 +33,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobby.ring.R
 import com.nobby.ring.ui.components.formatDateTime
@@ -41,7 +50,7 @@ import com.nobby.ring.ui.components.formatDateTime
 fun CalendarSettingsScreen(onBack: () -> Unit, onCleanup: () -> Unit, viewModel: CalendarSettingsViewModel = hiltViewModel()) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { viewModel.refreshPermission() }
-    LaunchedEffect(Unit) { viewModel.refreshPermission() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshPermission() }
 
     Scaffold(topBar = {
         NobbyTopBar(
@@ -63,18 +72,26 @@ fun CalendarSettingsScreen(onBack: () -> Unit, onCleanup: () -> Unit, viewModel:
             }
             if (ui.enabled) {
                 Text(stringResource(R.string.calendar_sync_choose), style = MaterialTheme.typography.titleSmall)
+                if (ui.needsChoice && ui.calendars.isNotEmpty()) Text(stringResource(R.string.calendar_sync_pick_hint), style = MaterialTheme.typography.bodySmall)
                 ui.calendars.forEach { cal ->
+                    val selected = cal.id == ui.selectedId
                     ListItem(
                         headlineContent = { Text(cal.name) },
                         supportingContent = { Text(cal.account) },
-                        leadingContent = { RadioButton(selected = cal.id == ui.selectedId, onClick = { viewModel.select(cal.id) }) },
+                        leadingContent = { RadioButton(selected = selected, onClick = null) },
+                        // The colour comes from the calendar provider; an ARGB value without alpha is made opaque.
+                        trailingContent = { Box(Modifier.size(12.dp).clip(CircleShape).background(Color(cal.color or OPAQUE))) },
+                        modifier = Modifier.selectable(selected = selected, role = Role.RadioButton, onClick = { viewModel.select(cal.id) }),
                     )
                 }
                 ui.lastSync?.let { Text(stringResource(R.string.calendar_sync_last, formatDateTime(it)), style = MaterialTheme.typography.bodySmall) }
                 Row { OutlinedButton(onClick = { viewModel.syncNow() }) { Text(stringResource(R.string.calendar_sync_now)) } }
                 OutlinedButton(onClick = onCleanup, Modifier.padding(top = 16.dp)) { Text(stringResource(R.string.calendar_cleanup)) }
             }
-            ui.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            val problem = if (ui.selectedMissing) stringResource(R.string.calendar_sync_gone) else ui.error
+            problem?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
     }
 }
+
+private const val OPAQUE = 0xFF000000.toInt()

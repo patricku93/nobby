@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nobby.ring.R
 import com.nobby.ring.data.calendar.CalendarSource
+import com.nobby.ring.data.calendar.CalendarUnavailableException
 import com.nobby.ring.data.calendar.CalendarSyncer
 import com.nobby.ring.data.calendar.DeviceCalendar
 import com.nobby.ring.data.calendar.FoundEvent
@@ -45,7 +46,13 @@ data class CalendarSettingsUiState(
     val to: LocalDate,
     val results: List<FoundEvent> = emptyList(),
     val selectedResults: Set<Long> = emptySet(),
-)
+    val calendarsLoaded: Boolean = false,
+) {
+    /** Sync is on, but no calendar is chosen yet: nothing is written until one is picked. */
+    val needsChoice: Boolean get() = enabled && selectedId == null
+    /** The stored calendar vanished from the provider (deleted outside the app, account removed). */
+    val selectedMissing: Boolean get() = enabled && calendarsLoaded && selectedId != null && calendars.none { it.id == selectedId }
+}
 
 @HiltViewModel
 class CalendarSettingsViewModel @Inject constructor(
@@ -67,14 +74,17 @@ class CalendarSettingsViewModel @Inject constructor(
     fun refreshPermission() {
         val granted = hasPermission()
         local.update { it.copy(permissionGranted = granted) }
-        if (granted) viewModelScope.launch {
-            runCatching { source.listWritable() }
-                .onSuccess { list -> local.update { it.copy(calendars = list) } }
-                .onFailure { e ->
-                    Log.e("NoBby", "Failed to list writable calendars", e)
-                    local.update { it.copy(error = e.message) }
-                }
-        }
+        if (granted) viewModelScope.launch { loadCalendars() }
+    }
+
+    private suspend fun loadCalendars() {
+        runCatching { source.listWritable() }
+            .onSuccess { list -> local.update { it.copy(calendars = list, calendarsLoaded = true) } }
+            .onFailure { e ->
+                if (e is CancellationException) throw e
+                Log.e("NoBby", "Failed to list writable calendars", e)
+                local.update { it.copy(error = e.message) }
+            }
     }
 
     // Provider writes run on the application scope so leaving the screen cannot stop them half-way.
@@ -83,8 +93,11 @@ class CalendarSettingsViewModel @Inject constructor(
             if (!enabled) {
                 syncer.disconnect()
             } else {
-                store.save(true, uiState.value.selectedId ?: uiState.value.calendars.firstOrNull()?.id)
-                runSync()
+                loadCalendars()
+                // Auto-select only when there is no ambiguity; with several calendars the user must pick one first.
+                val id = uiState.value.selectedId ?: local.value.calendars.singleOrNull()?.id
+                store.save(true, id)
+                if (id != null) runSync()
             }
         }
     }
@@ -106,7 +119,9 @@ class CalendarSettingsViewModel @Inject constructor(
             .onSuccess { local.update { it.copy(error = null) } }
             .onFailure { e ->
                 Log.e("NoBby", "Calendar sync failed", e)
-                local.update { it.copy(error = e.message) }
+                val message = if (e is CalendarUnavailableException) context.getString(R.string.calendar_sync_gone) else e.message
+                local.update { it.copy(error = message) }
+                loadCalendars()
             }
     }
 
@@ -118,6 +133,7 @@ class CalendarSettingsViewModel @Inject constructor(
         } catch (e: Exception) {
             Log.e("NoBby", label, e)
             local.update { it.copy(error = e.message) }
+            loadCalendars()
         }
     }
 

@@ -3,6 +3,8 @@ import com.nobby.ring.ui.components.NobbyButton
 import com.nobby.ring.ui.components.NobbyTopBar
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -64,10 +66,12 @@ fun CalendarCleanupScreen(onBack: () -> Unit, viewModel: CalendarSettingsViewMod
             ui.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             LazyColumn(Modifier.weight(1f)) {
                 items(ui.results, key = { it.id }) { r ->
+                    val checked = r.id in ui.selectedResults
                     ListItem(
                         headlineContent = { Text(r.title) },
                         supportingContent = { Text(formatDateTime(Instant.fromEpochMilliseconds(r.startMillis).toLocalDateTime(TimeZone.currentSystemDefault()))) },
-                        leadingContent = { Checkbox(checked = r.id in ui.selectedResults, onCheckedChange = { viewModel.toggleSelection(r.id) }) },
+                        leadingContent = { Checkbox(checked = checked, onCheckedChange = null) },
+                        modifier = Modifier.toggleable(value = checked, role = Role.Checkbox, onValueChange = { viewModel.toggleSelection(r.id) }),
                     )
                 }
             }
