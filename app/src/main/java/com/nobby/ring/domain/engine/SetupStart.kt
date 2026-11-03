@@ -72,9 +72,10 @@ object SetupStart {
     }
 
     /**
-     * A waiting schedule whose start is not ahead any more is a started one: the ring is in since that time, the same
-     * result as "ring is in" (Settings > Apply, I3). So no "not started" schedule with an overdue first insertion and
-     * no safety check can be saved. At or before [now] counts as past, as in [plan].
+     * A waiting schedule whose start the user entered at or before [now] is a started one: the ring is in since that
+     * time, the same result as "ring is in" (I3). Only for an entered start (Settings' start pickers): a planned start
+     * that merely passed is a first insertion still overdue, never an insertion (I1). At or before [now] counts as
+     * past, as in [plan].
      */
     fun startedBy(config: ScheduleConfig, now: LocalDateTime): ScheduleConfig =
         if (config.firstInsertPending && config.anchor <= now) config.copy(firstInsertPending = false) else config

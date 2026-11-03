@@ -9,7 +9,6 @@ import com.nobby.ring.domain.engine.ConfirmAction
 import com.nobby.ring.domain.engine.CycleCalculator
 import com.nobby.ring.domain.engine.OverdueCalculator
 import com.nobby.ring.domain.engine.ScheduleEngine
-import com.nobby.ring.domain.engine.SetupStart
 import com.nobby.ring.domain.engine.ShiftPolicy
 import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.EventLog
@@ -49,12 +48,11 @@ class ScheduleRepository @Inject constructor(
      * pause after Apply and is never planned longer than the configured one. The new key is written BEFORE the config
      * and the old one dropped AFTER it: every intermediate state has the removal logged under the id the stored config
      * expects (an extra unknown id is ignored, as in [confirm]); a stale duplicate left by a crash in between is
-     * removed by the next Apply. A schedule still waiting for its first ring whose start is not ahead any more is saved
-     * as started ([SetupStart.startedBy]).
+     * removed by the next Apply. [config] is saved as given and never reinterpreted by the clock: whether a waiting
+     * schedule has started is the caller's answer (Settings: only an edited start, [com.nobby.ring.domain.engine.SetupStart.startedBy]), so a
+     * waiting schedule whose start has passed stays waiting with its first insertion overdue (I1).
      */
-    suspend fun updateConfig(edited: ScheduleConfig) = writeLock.withLock {
-        // A waiting start moved to now or earlier means the ring is in since then (I3).
-        val config = SetupStart.startedBy(edited, clock.now())
+    suspend fun updateConfig(config: ScheduleConfig) = writeLock.withLock {
         val logs = eventLogDao.allOnce().map(::toDomain)
         val carried = configStore.config.first()?.let { old -> ConfigChange.carriedRemoval(old, config, logs) }
         val saved = carried?.config ?: config

@@ -276,11 +276,14 @@ class ScheduleRepositoryTest {
     }
 
     @Test
-    fun `Apply with a past start on a waiting schedule starts it there`() = runTest {
-        // I3: no "not started" schedule with an overdue first insertion and no safety check can be saved.
+    fun `Apply with a past start entered on a waiting schedule starts it there`() = runTest {
+        // I3: the user enters the real insertion through the start picker (anchorEdited); the draft resolves it.
         val method = Method.ring(21, 7, LocalTime(21, 0))
-        repo.updateConfig(ScheduleConfig(method, LocalDateTime(2026, 11, 25, 21, 0), firstInsertPending = true))
-        repo.updateConfig(ScheduleConfig(method, LocalDateTime(2026, 11, 20, 21, 0), firstInsertPending = true))
+        val waiting = ScheduleConfig(method, LocalDateTime(2026, 11, 25, 21, 0), firstInsertPending = true)
+        repo.updateConfig(waiting)
+        val draft = com.nobby.ring.ui.settings.ScheduleDraft.from(waiting, now = fixedNow)
+            .copy(anchor = LocalDateTime(2026, 11, 20, 21, 0), anchorEdited = true)
+        repo.updateConfig(draft.toConfig())
         val state = repo.state.filterNotNull().first()
         assertEquals(false, state.config.firstInsertPending)
         assertEquals(true, state.position.started)
@@ -294,5 +297,21 @@ class ScheduleRepositoryTest {
         val state = repo.state.filterNotNull().first()
         assertEquals(true, state.config.firstInsertPending)
         assertEquals(false, state.position.started)
+    }
+    @Test
+    fun `updateConfig keeps a waiting schedule with a past start waiting and its first ring overdue (I1)`() = runTest {
+        // Waiting since 21:00, now 23:00; the ring came out on Nov 10, so the break is past the pause safety threshold.
+        val method = Method.ring(21, 7, LocalTime(21, 0))
+        val removedAt = LocalDateTime(2026, 11, 10, 21, 0)
+        val removal = com.nobby.ring.domain.model.EventLog(
+            com.nobby.ring.domain.model.eventId(EventKind.REMOVE, removedAt), EventKind.REMOVE, removedAt, removedAt,
+        )
+        repo.startWith(ScheduleConfig(method, LocalDateTime(2026, 11, 22, 21, 0), firstInsertPending = true), listOf(removal))
+        repo.updateConfig(ScheduleConfig(Method.ring(22, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 22, 21, 0), firstInsertPending = true))
+        val state = repo.state.filterNotNull().first()
+        assertEquals(true, state.config.firstInsertPending)
+        assertEquals(false, state.position.started)
+        assertEquals(EventKind.INSERT, state.overdue!!.event.kind)
+        assertEquals(true, state.overdue!!.safetyBreached)
     }
 }

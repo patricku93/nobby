@@ -108,4 +108,14 @@ class ReminderSchedulerTest {
         scheduler.rescheduleAll()
         assertEquals(snoozed, overdueAlarmTime())
     }
+    @Test
+    fun `a waiting schedule keeps its overdue first-ring nag after a new time of day is applied (I1)`() = runTest {
+        nowValue = LocalDateTime(2026, 11, 22, 23, 0)
+        schedule.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 22, 21, 0), 1, firstInsertPending = true))
+        // Settings: routine time 21:00 -> 22:00, the start's time follows; still before now.
+        schedule.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(22, 0)), LocalDateTime(2026, 11, 22, 22, 0), 1, firstInsertPending = true))
+        scheduler.rescheduleAll()
+        assertEquals(true, schedule.currentState()!!.config.firstInsertPending)
+        assertEquals(nowValue.toInstant(TimeZone.UTC).toEpochMilliseconds(), overdueAlarmTime())
+    }
 }

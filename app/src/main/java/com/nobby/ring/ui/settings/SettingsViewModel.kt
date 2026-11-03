@@ -49,12 +49,17 @@ data class ScheduleDraft(
     /** The saved schedule and log the draft started from, so the preview shows what Apply saves (carried removal). */
     val base: ScheduleConfig? = null,
     val logs: List<EventLog> = emptyList(),
-    /** When the draft started; a waiting start moved to or before it means the ring is in since then. */
+    /** When the draft started; a waiting start entered at or before it means the ring is in since then. */
     val now: LocalDateTime? = null,
+    /**
+     * Set only by the start date/time pickers: the user answered when the ring went in. Without it a waiting schedule
+     * keeps waiting on Apply, even when its planned start has passed (the first insertion stays overdue, I1).
+     */
+    val anchorEdited: Boolean = false,
 ) {
     fun toConfig(): ScheduleConfig {
         val config = ScheduleConfig(Method.ring(wearDays, pauseDays, timeOfDay), anchor, horizonMonths, skipPauseOnce, firstInsertPending)
-        return now?.let { SetupStart.startedBy(config, it) } ?: config
+        return now?.takeIf { anchorEdited }?.let { SetupStart.startedBy(config, it) } ?: config
     }
 
     /** Still waiting for the first ring: the date field asks when it will go in, not when it went in. */
