@@ -4,6 +4,7 @@ import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.provider.CalendarContract
+import android.provider.CalendarContract.Calendars as C
 import android.util.Log
 import com.nobby.ring.domain.engine.CalendarEntry
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -14,11 +15,24 @@ import kotlinx.datetime.toInstant
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.minutes
 
-data class DeviceCalendar(val id: Long, val name: String, val account: String, val color: Int)
+/**
+ * [identity] tells apart two calendars that got the same provider id (ids are reused after a delete): account name,
+ * account type, internal calendar name and the provider's _SYNC_ID when there is one. [writable] is false for read-only ones.
+ */
+data class DeviceCalendar(
+    val id: Long,
+    val name: String,
+    val account: String,
+    val color: Int,
+    val identity: String = "$account|$name",
+    val writable: Boolean = true,
+)
 data class FoundEvent(val id: Long, val title: String, val startMillis: Long)
 
 interface CalendarSource {
     suspend fun listWritable(): List<DeviceCalendar>
+    /** Every calendar on the device incl. read-only ones, or null when the provider query itself failed (nothing is known). */
+    suspend fun listAll(): List<DeviceCalendar>?
     suspend fun insert(calendarId: Long, entry: CalendarEntry, zone: TimeZone): Long
     /** Returns the number of rows updated (0 when the provider event no longer exists). */
     suspend fun update(providerId: Long, entry: CalendarEntry, zone: TimeZone): Int
@@ -31,15 +45,22 @@ interface CalendarSource {
 class DeviceCalendarSource @Inject constructor(@ApplicationContext private val context: Context) : CalendarSource {
     private val resolver get() = context.contentResolver
 
-    override suspend fun listWritable(): List<DeviceCalendar> = withContext(Dispatchers.IO) {
+    override suspend fun listWritable(): List<DeviceCalendar> = listAll()?.filter { it.writable } ?: emptyList()
+
+    override suspend fun listAll(): List<DeviceCalendar>? = withContext(Dispatchers.IO) {
         val projection = arrayOf(
-            CalendarContract.Calendars._ID, CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
-            CalendarContract.Calendars.ACCOUNT_NAME, CalendarContract.Calendars.CALENDAR_COLOR,
+            C._ID, C.CALENDAR_DISPLAY_NAME, C.ACCOUNT_NAME, C.CALENDAR_COLOR,
+            C.ACCOUNT_TYPE, C.NAME, C._SYNC_ID, C.CALENDAR_ACCESS_LEVEL,
         )
-        val selection = "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ${CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR}"
-        resolver.query(CalendarContract.Calendars.CONTENT_URI, projection, selection, null, null)?.use { c ->
-            buildList { while (c.moveToNext()) add(DeviceCalendar(c.getLong(0), c.getString(1) ?: "", c.getString(2) ?: "", c.getInt(3))) }
-        } ?: emptyList()
+        resolver.query(C.CONTENT_URI, projection, null, null, null)?.use { cur ->
+            buildList {
+                while (cur.moveToNext()) {
+                    val account = cur.getString(2) ?: ""
+                    val identity = listOf(account, cur.getString(4) ?: "", cur.getString(5) ?: "", cur.getString(6) ?: "").joinToString("|")
+                    add(DeviceCalendar(cur.getLong(0), cur.getString(1) ?: "", account, cur.getInt(3), identity, cur.getInt(7) >= C.CAL_ACCESS_CONTRIBUTOR))
+                }
+            }
+        }
     }
 
     override suspend fun insert(calendarId: Long, entry: CalendarEntry, zone: TimeZone): Long = withContext(Dispatchers.IO) {

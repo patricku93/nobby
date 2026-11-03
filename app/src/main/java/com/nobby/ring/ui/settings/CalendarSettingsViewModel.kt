@@ -38,6 +38,7 @@ data class CalendarSettingsUiState(
     val enabled: Boolean = false,
     val calendars: List<DeviceCalendar> = emptyList(),
     val selectedId: Long? = null,
+    val selectedIdentity: String? = null,
     val lastSync: LocalDateTime? = null,
     val permissionGranted: Boolean = false,
     val error: String? = null,
@@ -51,7 +52,9 @@ data class CalendarSettingsUiState(
     /** Sync is on, but no calendar is chosen yet: nothing is written until one is picked. */
     val needsChoice: Boolean get() = enabled && selectedId == null
     /** The stored calendar vanished from the provider (deleted outside the app, account removed). */
-    val selectedMissing: Boolean get() = enabled && calendarsLoaded && selectedId != null && calendars.none { it.id == selectedId }
+    val selectedMissing: Boolean
+        get() = enabled && calendarsLoaded && selectedId != null &&
+            calendars.none { it.id == selectedId && (selectedIdentity == null || it.identity == selectedIdentity) }
 }
 
 @HiltViewModel
@@ -67,8 +70,8 @@ class CalendarSettingsViewModel @Inject constructor(
         CalendarSettingsUiState(from = clock.now().date, to = LocalDate(clock.now().year + 1, clock.now().monthNumber, 1), permissionGranted = hasPermission()),
     )
 
-    val uiState: StateFlow<CalendarSettingsUiState> = combine(local, store.enabled, store.calendarId, store.lastSync) { l, enabled, id, last ->
-        l.copy(enabled = enabled, selectedId = id, lastSync = last)
+    val uiState: StateFlow<CalendarSettingsUiState> = combine(local, store.enabled, store.calendarId, store.lastSync, store.calendarIdentity) { l, enabled, id, last, identity ->
+        l.copy(enabled = enabled, selectedId = id, selectedIdentity = identity, lastSync = last)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), local.value)
 
     fun refreshPermission() {
@@ -95,8 +98,10 @@ class CalendarSettingsViewModel @Inject constructor(
             } else {
                 loadCalendars()
                 // Auto-select only when there is no ambiguity; with several calendars the user must pick one first.
-                val id = uiState.value.selectedId ?: local.value.calendars.singleOrNull()?.id
-                store.save(true, id)
+                val kept = uiState.value.selectedId
+                val auto = if (kept == null) local.value.calendars.singleOrNull() else null
+                val id = kept ?: auto?.id
+                store.save(true, id, auto?.identity)
                 if (id != null) runSync()
             }
         }
@@ -104,10 +109,15 @@ class CalendarSettingsViewModel @Inject constructor(
 
     fun select(id: Long) = appScope.launch {
         guarded("Calendar selection failed") {
-            val previous = uiState.value.selectedId
-            // Events already written to the previous calendar must be removed before switching (store stays enabled).
-            if (previous != null && previous != id) syncer.clearLinks()
-            store.save(true, id)
+            val state = uiState.value
+            val picked = local.value.calendars.firstOrNull { it.id == id }
+            val sameChoice = state.selectedId == id && (state.selectedIdentity == null || state.selectedIdentity == picked?.identity)
+            // Tapping the calendar that is already in use (and still there) changes nothing.
+            if (sameChoice && state.selectedIdentity != null && picked != null) return@guarded
+            // Events already written to the previous calendar (or to one since replaced under the same id) must be
+            // removed before switching; the store stays enabled.
+            if (state.selectedId != null && !sameChoice) syncer.clearLinks()
+            store.save(true, id, picked?.identity)
             runSync()
         }
     }
@@ -118,9 +128,9 @@ class CalendarSettingsViewModel @Inject constructor(
         syncer.syncNow()
             .onSuccess { local.update { it.copy(error = null) } }
             .onFailure { e ->
-                Log.e("NoBby", "Calendar sync failed", e)
-                val message = if (e is CalendarUnavailableException) context.getString(R.string.calendar_sync_gone) else e.message
-                local.update { it.copy(error = message) }
+                // A vanished calendar is shown through selectedMissing (live and localised); it needs no stored error.
+                if (e !is CalendarUnavailableException) Log.e("NoBby", "Calendar sync failed", e)
+                local.update { it.copy(error = if (e is CalendarUnavailableException) null else e.message) }
                 loadCalendars()
             }
     }

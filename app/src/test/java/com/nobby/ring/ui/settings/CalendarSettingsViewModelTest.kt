@@ -115,14 +115,39 @@ class CalendarSettingsViewModelTest {
         source.calendars = listOf(privat)
         vm.refreshPermission()
         vm.syncNow().join()
-        val gone = awaitState { it.error != null && !it.calendars.any { c -> c.id == 3L } }
-        assertEquals(context.getString(R.string.calendar_sync_gone), gone.error)
+        val gone = awaitState { it.selectedMissing }
+        // The "gone" text is derived from selectedMissing, not stored as a (stale, frozen-locale) error.
+        assertNull(gone.error)
         assertTrue(gone.selectedMissing)
         assertEquals(synced, store.lastSync.first())
 
         vm.select(2).join()
-        val recovered = awaitState { it.error == null && it.selectedId == 2L }
+        val recovered = awaitState { it.selectedId == 2L }
         assertFalse(recovered.selectedMissing)
+    }
+
+    @Test
+    fun `a reused id with another identity is flagged missing and picking it again re-creates the events`() = runTest {
+        source.calendars = listOf(privat)
+        backgroundScope.launch { vm.uiState.collect {} }
+        vm.refreshPermission()
+        vm.select(2).join()
+        val synced = store.lastSync.first()
+        assertEquals(4, source.events.size)
+        // The calendar was deleted and a different one got id 2; its events died with the old one.
+        source.events.clear(); source.calendarOf.clear()
+        val replacement = DeviceCalendar(2, "Neu", "fremd@gmail.com", 0)
+        source.calendars = listOf(replacement)
+        vm.refreshPermission()
+        vm.syncNow().join()
+        assertTrue(awaitState { it.selectedMissing }.selectedMissing)
+        assertEquals(0, source.events.size)
+        assertEquals(synced, store.lastSync.first())
+
+        vm.select(2).join()
+        assertEquals(4, source.events.size)
+        assertEquals(replacement.identity, store.calendarIdentity.first())
+        assertFalse(awaitState { it.selectedId == 2L && it.calendars.isNotEmpty() }.selectedMissing)
     }
 
     @Test

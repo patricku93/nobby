@@ -267,6 +267,7 @@
     <string name="calendar_cleanup">Clean up old entries</string>
     <string name="calendar_sync_gone">Your calendar is gone. Pick another one to carry on.</string>
     <string name="calendar_sync_pick_hint">Pick a calendar. NoBby adds nothing until you do.</string>
+    <string name="calendar_sync_none">No calendar you can write to was found on this device.</string>
     <string name="cleanup_query">Title contains / regex</string>
     <string name="cleanup_from">From</string>
     <string name="cleanup_to">To</string>

@@ -9,6 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -72,7 +74,9 @@ fun CalendarSettingsScreen(onBack: () -> Unit, onCleanup: () -> Unit, viewModel:
             }
             if (ui.enabled) {
                 Text(stringResource(R.string.calendar_sync_choose), style = MaterialTheme.typography.titleSmall)
+                if (ui.calendarsLoaded && ui.calendars.isEmpty()) Text(stringResource(R.string.calendar_sync_none), style = MaterialTheme.typography.bodySmall)
                 if (ui.needsChoice && ui.calendars.isNotEmpty()) Text(stringResource(R.string.calendar_sync_pick_hint), style = MaterialTheme.typography.bodySmall)
+                Column(Modifier.selectableGroup()) {
                 ui.calendars.forEach { cal ->
                     val selected = cal.id == ui.selectedId
                     ListItem(
@@ -80,12 +84,16 @@ fun CalendarSettingsScreen(onBack: () -> Unit, onCleanup: () -> Unit, viewModel:
                         supportingContent = { Text(cal.account) },
                         leadingContent = { RadioButton(selected = selected, onClick = null) },
                         // The colour comes from the calendar provider; an ARGB value without alpha is made opaque.
-                        trailingContent = { Box(Modifier.size(12.dp).clip(CircleShape).background(Color(cal.color or OPAQUE))) },
+                        trailingContent = {
+                            // Outline keeps white or very light calendars visible on the surface.
+                            Box(Modifier.size(12.dp).clip(CircleShape).background(Color(cal.color).copy(alpha = 1f)).border(1.dp, MaterialTheme.colorScheme.outline, CircleShape))
+                        },
                         modifier = Modifier.selectable(selected = selected, role = Role.RadioButton, onClick = { viewModel.select(cal.id) }),
                     )
                 }
+                }
                 ui.lastSync?.let { Text(stringResource(R.string.calendar_sync_last, formatDateTime(it)), style = MaterialTheme.typography.bodySmall) }
-                Row { OutlinedButton(onClick = { viewModel.syncNow() }) { Text(stringResource(R.string.calendar_sync_now)) } }
+                Row { OutlinedButton(onClick = { viewModel.syncNow() }, enabled = !ui.needsChoice) { Text(stringResource(R.string.calendar_sync_now)) } }
                 OutlinedButton(onClick = onCleanup, Modifier.padding(top = 16.dp)) { Text(stringResource(R.string.calendar_cleanup)) }
             }
             val problem = if (ui.selectedMissing) stringResource(R.string.calendar_sync_gone) else ui.error
@@ -93,5 +101,3 @@ fun CalendarSettingsScreen(onBack: () -> Unit, onCleanup: () -> Unit, viewModel:
         }
     }
 }
-
-private const val OPAQUE = 0xFF000000.toInt()

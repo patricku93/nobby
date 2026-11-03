@@ -13,18 +13,23 @@ class CalendarSyncWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val syncer: CalendarSyncer,
 ) : CoroutineWorker(context, params) {
-    override suspend fun doWork(): Result {
-        val outcome = syncer.syncNow()
-        return when {
-            outcome.isSuccess -> Result.success()
-            // Calendar deleted: settings shows the hint, retrying cannot help until the user picks another one.
-            outcome.exceptionOrNull() is CalendarUnavailableException -> Result.failure()
-            // Permission revoked: retrying cannot help until the user grants it again.
-            outcome.exceptionOrNull() is SecurityException -> Result.failure()
-            runAttemptCount >= MAX_ATTEMPTS -> Result.failure()
-            else -> Result.retry()
+    override suspend fun doWork(): Result = resultFor(syncer.syncNow(), runAttemptCount)
+
+    companion object {
+        private const val MAX_ATTEMPTS = 3
+
+        /** Maps a sync outcome to the WorkManager result: only failures that waiting can fix are retried. */
+        internal fun resultFor(outcome: kotlin.Result<Int>, attempt: Int): Result {
+            val error = outcome.exceptionOrNull()
+            return when {
+                outcome.isSuccess -> Result.success()
+                // Calendar deleted, read-only or replaced: settings shows the hint; retrying cannot help until the user picks again.
+                error is CalendarUnavailableException -> Result.failure()
+                // Permission revoked: retrying cannot help until the user grants it again.
+                error is SecurityException -> Result.failure()
+                attempt >= MAX_ATTEMPTS -> Result.failure()
+                else -> Result.retry()
+            }
         }
     }
-
-    private companion object { const val MAX_ATTEMPTS = 3 }
 }

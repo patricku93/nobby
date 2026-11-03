@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import androidx.work.ListenableWorker
 import com.nobby.ring.data.db.CalendarLinkDao
 import com.nobby.ring.data.db.CalendarLinkEntity
 import com.nobby.ring.data.db.NobbyDatabase
@@ -30,17 +31,36 @@ import java.io.File
 
 class FakeCalendarSource : CalendarSource {
     val events = linkedMapOf<Long, CalendarEntry>()
+    /** Calendar each event lives in, like the provider's CALENDAR_ID. */
+    val calendarOf = mutableMapOf<Long, Long>()
     private var nextId = 100L
     var calendars = listOf(DeviceCalendar(1, "Test", "test@example.com", 0))
-    override suspend fun listWritable() = calendars
-    override suspend fun insert(calendarId: Long, entry: CalendarEntry, zone: TimeZone): Long { val id = nextId++; events[id] = entry; return id }
+    /** Simulates a failed provider query (null cursor). */
+    var listFails = false
+    override suspend fun listWritable() = listAll()?.filter { it.writable } ?: emptyList()
+    override suspend fun listAll(): List<DeviceCalendar>? = if (listFails) null else calendars
+    override suspend fun insert(calendarId: Long, entry: CalendarEntry, zone: TimeZone): Long {
+        val id = nextId++
+        events[id] = entry
+        calendarOf[id] = calendarId
+        return id
+    }
+    /** A user's own event: no NoBby marker. */
+    fun addForeign(calendarId: Long, title: String = "Dentist"): Long {
+        val id = nextId++
+        events[id] = CalendarEntry("foreign-$id", title, LocalDateTime(2026, 11, 5, 9, 0), 30, "my notes")
+        calendarOf[id] = calendarId
+        return id
+    }
     override suspend fun update(providerId: Long, entry: CalendarEntry, zone: TimeZone): Int {
         if (providerId !in events) return 0
         events[providerId] = entry
         return 1
     }
-    override suspend fun isOwnEvent(providerId: Long, calendarId: Long): Boolean = providerId in events
-    override suspend fun delete(providerId: Long): Boolean = events.remove(providerId) != null
+    // Like the provider: live row, NoBby marker in the description and the chosen calendar.
+    override suspend fun isOwnEvent(providerId: Long, calendarId: Long): Boolean =
+        events[providerId]?.description?.startsWith(CalendarEntry.MARKER_PREFIX) == true && calendarOf[providerId] == calendarId
+    override suspend fun delete(providerId: Long): Boolean { calendarOf.remove(providerId); return events.remove(providerId) != null }
     override suspend fun search(calendarId: Long, pattern: Regex, fromMillis: Long, toMillis: Long) =
         events.filter { pattern.containsMatchIn(it.value.title) }.map { FoundEvent(it.key, it.value.title, 0L) }
 }
@@ -131,7 +151,7 @@ class CalendarSyncerTest {
     }
 
     @Test
-    fun `a stored calendar that no longer exists fails without writing, keeps lastSync and clears the links`() = runTest {
+    fun `a stored calendar that no longer exists fails without writing and keeps lastSync and the links`() = runTest {
         syncer.syncNow().getOrThrow()
         val lastBefore = syncStore.lastSync.first()
         source.calendars = emptyList()
@@ -143,7 +163,7 @@ class CalendarSyncerTest {
         assertTrue(result.exceptionOrNull() is CalendarUnavailableException)
         assertEquals(before, source.events.toMap())
         assertEquals(lastBefore, syncStore.lastSync.first())
-        assertEquals(0, linkDao.allOnce().size)
+        assertEquals(4, linkDao.allOnce().size)
         assertEquals(true, syncStore.enabled.first())
     }
 
@@ -160,8 +180,119 @@ class CalendarSyncerTest {
         syncer.syncNow().getOrThrow()
         source.calendars = listOf(DeviceCalendar(2, "Other", "x", 0))
         assertTrue(syncer.syncNow().isFailure)
+        syncer.clearLinks() // what the settings screen does when the user picks
         syncStore.save(enabled = true, calendarId = 2)
         assertEquals(4, syncer.syncNow().getOrThrow())
         assertEquals(4, linkDao.allOnce().size)
+    }
+
+    @Test
+    fun `a read-only calendar fails without writing and keeps links, and works again when writable`() = runTest {
+        syncer.syncNow().getOrThrow()
+        val cal = source.calendars.single()
+        source.calendars = listOf(cal.copy(writable = false))
+        schedule.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(8, 0)), LocalDateTime(2026, 11, 1, 8, 0), 2))
+        val lastBefore = syncStore.lastSync.first()
+        val before = source.events.toMap()
+
+        assertTrue(syncer.syncNow().exceptionOrNull() is CalendarUnavailableException)
+        assertEquals(before, source.events.toMap())
+        assertEquals(4, linkDao.allOnce().size)
+        assertEquals(lastBefore, syncStore.lastSync.first())
+
+        source.calendars = listOf(cal)
+        syncer.syncNow().getOrThrow()
+        assertEquals(4, source.events.size)
+        assertEquals(4, linkDao.allOnce().size)
+    }
+
+    @Test
+    fun `a failed calendar query neither writes nor clears links nor advances lastSync`() = runTest {
+        syncer.syncNow().getOrThrow()
+        val lastBefore = syncStore.lastSync.first()
+        source.listFails = true
+        schedule.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(8, 0)), LocalDateTime(2026, 11, 1, 8, 0), 2))
+        val before = source.events.toMap()
+
+        val result = syncer.syncNow()
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() !is CalendarUnavailableException)
+        assertEquals(before, source.events.toMap())
+        assertEquals(4, linkDao.allOnce().size)
+        assertEquals(lastBefore, syncStore.lastSync.first())
+
+        source.listFails = false
+        syncer.syncNow().getOrThrow()
+        assertEquals(4, source.events.size)
+    }
+
+    @Test
+    fun `a foreign event survives an unavailable sync and a later sync with stale links`() = runTest {
+        syncer.syncNow().getOrThrow()
+        val foreign = source.addForeign(1)
+        // A stale link whose provider id is now the user's event (id reuse).
+        val link = linkDao.allOnce().first()
+        linkDao.upsert(listOf(CalendarLinkEntity(link.eventId, foreign, "2026-01-01T00:00", link.title)))
+        source.calendars = emptyList()
+        assertTrue(syncer.syncNow().isFailure)
+        source.calendars = listOf(DeviceCalendar(1, "Test", "test@example.com", 0))
+
+        syncer.syncNow().getOrThrow()
+
+        assertEquals("Dentist", source.events[foreign]?.title)
+        assertEquals("my notes", source.events[foreign]?.description)
+        assertEquals(4, linkDao.allOnce().size)
+    }
+
+    @Test
+    fun `a reused id with a different identity is gone - no writes, no lastSync, pick again recovers`() = runTest {
+        syncer.syncNow().getOrThrow()
+        val lastBefore = syncStore.lastSync.first()
+        source.events.clear(); source.calendarOf.clear() // the old calendar and its events died with it
+        source.calendars = listOf(DeviceCalendar(1, "Other", "someone@gmail.com", 0))
+
+        val result = syncer.syncNow()
+
+        assertTrue(result.exceptionOrNull() is CalendarUnavailableException)
+        assertEquals(0, source.events.size)
+        assertEquals(lastBefore, syncStore.lastSync.first())
+
+        syncer.clearLinks()
+        syncStore.save(enabled = true, calendarId = 1, identity = source.calendars.single().identity)
+        assertEquals(4, syncer.syncNow().getOrThrow())
+    }
+
+    @Test
+    fun `a recreated identical calendar with the same id keeps syncing`() = runTest {
+        syncer.syncNow().getOrThrow()
+        source.events.clear(); source.calendarOf.clear()
+        source.calendars = listOf(DeviceCalendar(1, "Test", "test@example.com", 0))
+
+        // Same identity is not "gone"; the next schedule change re-creates what the old calendar took with it.
+        schedule.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(8, 0)), LocalDateTime(2026, 11, 1, 8, 0), 2))
+        syncer.syncNow().getOrThrow()
+        assertEquals(4, source.events.size)
+        assertEquals(4, linkDao.allOnce().size)
+    }
+
+    @Test
+    fun `a stored choice without identity captures it on the next successful sync, then guards`() = runTest {
+        assertEquals(null, syncStore.calendarIdentity.first())
+        syncer.syncNow().getOrThrow()
+        assertEquals(source.calendars.single().identity, syncStore.calendarIdentity.first())
+
+        source.calendars = listOf(DeviceCalendar(1, "Other", "x", 0))
+        assertTrue(syncer.syncNow().exceptionOrNull() is CalendarUnavailableException)
+    }
+
+    @Test
+    fun `worker maps an unavailable calendar to failure without retry`() {
+        val unavailable = kotlin.Result.failure<Int>(CalendarUnavailableException(1))
+        assertEquals(ListenableWorker.Result.failure(), CalendarSyncWorker.resultFor(unavailable, 0))
+        assertEquals(ListenableWorker.Result.failure(), CalendarSyncWorker.resultFor(kotlin.Result.failure(SecurityException()), 0))
+        assertEquals(ListenableWorker.Result.retry(), CalendarSyncWorker.resultFor(kotlin.Result.failure(IllegalStateException()), 0))
+        assertEquals(ListenableWorker.Result.failure(), CalendarSyncWorker.resultFor(kotlin.Result.failure(IllegalStateException()), 3))
+        assertEquals(ListenableWorker.Result.success(), CalendarSyncWorker.resultFor(kotlin.Result.success(0), 0))
     }
 }

@@ -53,12 +53,16 @@ class CalendarSyncer @Inject constructor(
         mutex.withLock {
             if (!syncStore.enabled.first()) return@withLock 0
             val calendarId = syncStore.calendarId.first() ?: return@withLock 0
-            // The calendar may have been deleted or made read-only outside the app: write nothing, keep lastSync,
-            // and drop the links (their provider events went with the calendar) so a later pick starts clean.
-            if (source.listWritable().none { it.id == calendarId }) {
-                linkDao.clear()
-                throw CalendarUnavailableException(calendarId)
-            }
+            // The calendar may have been deleted, replaced (ids get reused) or made read-only outside the app: write
+            // nothing and keep lastSync. Links stay: ownership checks (marker + calendar id) keep stale ones harmless,
+            // and clearing them would orphan events that are still there (read-only now, writable later -> duplicates).
+            val all = source.listAll() ?: throw IllegalStateException("Calendar list unavailable")
+            val calendar = all.firstOrNull { it.id == calendarId }
+            if (calendar == null || !calendar.writable) throw CalendarUnavailableException(calendarId)
+            val storedIdentity = syncStore.calendarIdentity.first()
+            // Same id, different calendar: the chosen one is gone. Choices stored before identities existed adopt it now.
+            if (storedIdentity == null) syncStore.saveIdentity(calendar.identity)
+            else if (storedIdentity != calendar.identity) throw CalendarUnavailableException(calendarId)
             val state = schedule.currentState() ?: return@withLock 0
             val desired = state.pendingEvents.map { e ->
                 CalendarEntry(e.id, titleFor(e.kind), e.plannedAt, 30, CalendarEntry.marker(e.id))
