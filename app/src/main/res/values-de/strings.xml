@@ -210,8 +210,6 @@
     <string name="history_on_time">pünktlich</string>
     <string name="history_late">%1$s zu spät</string>
     <string name="history_early">%1$s zu früh</string>
-    <!-- legacy v1 Verlauf, entfernt in Task 11 -->
-    <string name="history_empty">Noch nichts im Verlauf.</string>
 
     <!-- Einstellungen -->
     <string name="settings_group_ring">Ring</string>

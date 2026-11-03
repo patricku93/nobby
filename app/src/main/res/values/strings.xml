@@ -210,8 +210,6 @@
     <string name="history_on_time">on time</string>
     <string name="history_late">%1$s late</string>
     <string name="history_early">%1$s early</string>
-    <!-- legacy v1 history, removed in Task 11 -->
-    <string name="history_empty">Nothing here yet.</string>
 
     <!-- settings -->
     <string name="settings_group_ring">Ring</string>
