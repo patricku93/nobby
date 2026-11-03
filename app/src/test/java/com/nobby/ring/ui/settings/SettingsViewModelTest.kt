@@ -12,6 +12,8 @@ import com.nobby.ring.data.prefs.WidgetConfigStore
 import com.nobby.ring.data.repo.ReminderRepository
 import com.nobby.ring.data.repo.ScheduleRepository
 import com.nobby.ring.domain.NobbyClock
+import com.nobby.ring.domain.engine.ShiftPolicy
+import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.Method
 import com.nobby.ring.domain.model.ScheduleConfig
 import com.nobby.ring.notifications.ScheduleChangeListener
@@ -44,6 +46,7 @@ class SettingsViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private lateinit var vm: SettingsViewModel
     private lateinit var configStore: MethodConfigStore
+    private lateinit var schedule: ScheduleRepository
     @Volatile private var changes = 0
 
     @Before
@@ -54,7 +57,7 @@ class SettingsViewModelTest {
         val ds = PreferenceDataStoreFactory.create { File(context.cacheDir, "set-${System.nanoTime()}.preferences_pb") }
         val clock = object : NobbyClock { override fun now() = LocalDateTime(2026, 11, 5, 12, 0); override val zone = TimeZone.UTC }
         configStore = MethodConfigStore(ds)
-        val schedule = ScheduleRepository(configStore, db.eventLogDao(), clock)
+        schedule = ScheduleRepository(configStore, db.eventLogDao(), clock)
         schedule.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 1, 21, 0)))
         vm = SettingsViewModel(
             schedule, ReminderRepository(db.reminderRuleDao()), ThemeStore(ds), WidgetConfigStore(ds), OverdueConfigStore(ds),
@@ -89,5 +92,20 @@ class SettingsViewModelTest {
         vm.applyDraft()
         val saved = configStore.config.first { it?.method?.timeOfDay == LocalTime(20, 0) }!!
         assertEquals(true, saved.skipPauseOnce)
+    }
+
+    @Test
+    fun `the preview after a confirmed removal shows the INSERT that Apply will save (I-A)`() = runTest(dispatcher) {
+        dispatcher.scheduler.advanceUntilIdle()
+        val wear = schedule.currentState()!!
+        schedule.confirm(wear.nextEvent!!.id, LocalDateTime(2026, 11, 22, 23, 0), ShiftPolicy.KEEP)
+        vm.startScheduleDraft()
+        vm.draft.first { it != null }
+        vm.updateDraft { it.copy(wearDays = 22) }
+        val expected = LocalDateTime(2026, 11, 29, 21, 0) // not Nov 30: the break stays within the 7-day pause
+        assertEquals(expected, vm.draft.value!!.preview.first { it.kind == EventKind.INSERT }.plannedAt)
+        vm.applyDraft()
+        configStore.config.first { it?.method?.wearDays == 22 }
+        assertEquals(expected, schedule.currentState()!!.nextEvent!!.plannedAt)
     }
 }

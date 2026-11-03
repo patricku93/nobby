@@ -9,7 +9,9 @@ import com.nobby.ring.data.prefs.WidgetConfigStore
 import com.nobby.ring.data.repo.ReminderRepository
 import com.nobby.ring.data.repo.ScheduleRepository
 import com.nobby.ring.di.ApplicationScope
+import com.nobby.ring.domain.engine.ConfigChange
 import com.nobby.ring.domain.engine.ScheduleEngine
+import com.nobby.ring.domain.model.EventLog
 import com.nobby.ring.domain.model.Method
 import com.nobby.ring.domain.model.OverdueConfig
 import com.nobby.ring.domain.model.ReminderRule
@@ -41,15 +43,19 @@ data class ScheduleDraft(
     val horizonMonths: Int,
     /** Not edited on this screen; carried through so Apply does not cancel a pending skip-pause. */
     val skipPauseOnce: Boolean = false,
+    /** The saved schedule and log the draft started from, so the preview shows what Apply saves (carried removal). */
+    val base: ScheduleConfig? = null,
+    val logs: List<EventLog> = emptyList(),
 ) {
     fun toConfig(): ScheduleConfig = ScheduleConfig(Method.ring(wearDays, pauseDays, timeOfDay), anchor, horizonMonths, skipPauseOnce)
-    val preview: List<ScheduledEvent> get() = ScheduleEngine.generate(toConfig()).take(4)
+    val preview: List<ScheduledEvent> get() = ScheduleEngine.generate(ConfigChange.resolve(base, toConfig(), logs)).take(4)
     val wearWarning: Boolean get() = wearDays > ScheduleConfig.SAFE_MAX_WEAR
     val pauseWarning: Boolean get() = pauseDays > ScheduleConfig.SAFE_MAX_PAUSE
 
     companion object {
-        fun from(config: ScheduleConfig) = ScheduleDraft(
+        fun from(config: ScheduleConfig, logs: List<EventLog> = emptyList()) = ScheduleDraft(
             config.method.wearDays, config.method.pauseDays, config.method.timeOfDay, config.anchor, config.horizonMonths, config.skipPauseOnce,
+            base = config, logs = logs,
         )
     }
 }
@@ -80,8 +86,8 @@ class SettingsViewModel @Inject constructor(
     fun deleteRule(id: Long) = persist("deleting reminder rule") { reminders.delete(id) }
 
     fun startScheduleDraft() = viewModelScope.launch {
-        val config = scheduleRepo.currentState()?.config ?: return@launch
-        _draft.value = ScheduleDraft.from(config)
+        val state = scheduleRepo.currentState() ?: return@launch
+        _draft.value = ScheduleDraft.from(state.config, state.logs)
     }
 
     fun updateDraft(transform: (ScheduleDraft) -> ScheduleDraft) = _draft.update { it?.let(transform) }

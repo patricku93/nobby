@@ -128,4 +128,14 @@ class OverdueCalculatorTest {
         assertFalse(OverdueCalculator.overdue(swapConfig, swapEvents, emptyList(), LocalDateTime(2026, 11, 29, 21, 59))!!.safetyBreached)
         assertTrue(OverdueCalculator.overdue(swapConfig, swapEvents, emptyList(), LocalDateTime(2026, 11, 29, 22, 1))!!.safetyBreached)
     }
+
+    @Test
+    fun `pause safety is measured from the removal logged under this cycle's REMOVE id (I-A)`() {
+        // A removal carried by Settings > Apply keeps its original plannedAt, which can be before the new cycle start.
+        val remove = events.first { it.kind == EventKind.REMOVE && it.cycleIndex == 0 }
+        val carried = EventLog(remove.id, EventKind.REMOVE, LocalDateTime(2026, 10, 30, 21, 0), LocalDateTime(2026, 11, 21, 21, 0))
+        val info = OverdueCalculator.overdue(config, events, listOf(carried), LocalDateTime(2026, 11, 29, 21, 30))!!
+        assertEquals(EventKind.INSERT, info.event.kind)
+        assertTrue("8 days since the real removal", info.safetyBreached)
+    }
 }

@@ -23,8 +23,8 @@ object OverdueCalculator {
     }
 
     /**
-     * Wear is measured from the planned cycle start; pause from the actual REMOVE confirmation when logged, else from the
-     * planned remove time. A threshold is breached only beyond [ScheduleConfig.SAFE_MAX_WEAR] / [ScheduleConfig.SAFE_MAX_PAUSE]
+     * Wear is measured from the planned cycle start; pause from the actual confirmation of this cycle's REMOVE (found by
+     * id) when logged, else from the planned remove time. A threshold is breached only beyond [ScheduleConfig.SAFE_MAX_WEAR] / [ScheduleConfig.SAFE_MAX_PAUSE]
      * days plus [ConfirmAction.CONFIRM_TOLERANCE_MINUTES]: a 60-minute grace matches the confirmation tolerance.
      */
     fun overdue(config: ScheduleConfig, events: List<ScheduledEvent>, logs: List<EventLog>, now: LocalDateTime): OverdueInfo? {
@@ -34,7 +34,10 @@ object OverdueCalculator {
         val breached = when (pending.kind) {
             EventKind.REMOVE, EventKind.SWAP -> between(pending.cycleStart, now) > ScheduleConfig.SAFE_MAX_WEAR.days + grace
             EventKind.INSERT -> {
-                val removedAt = logs.firstOrNull { it.kind == EventKind.REMOVE && it.plannedAt >= pending.cycleStart }?.confirmedAt
+                // By id, the same rule as CycleCalculator / nextPending (D9): a removal carried by Settings > Apply
+                // keeps its original plannedAt, which can lie before this cycle's start.
+                val removeId = events.firstOrNull { it.kind == EventKind.REMOVE && it.cycleIndex == pending.cycleIndex }?.id
+                val removedAt = logs.firstOrNull { it.eventId == removeId }?.confirmedAt
                     ?: config.removeTimeFor(pending.cycleStart)
                 between(removedAt, now) > ScheduleConfig.SAFE_MAX_PAUSE.days + grace
             }

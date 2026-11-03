@@ -17,6 +17,8 @@ import com.nobby.ring.domain.model.ScheduleState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,36 +39,52 @@ class ScheduleRepository @Inject constructor(
 
     suspend fun currentState(): ScheduleState? = state.first()
 
+    /** Serializes the read-modify-write paths: a notification Done can run while Settings applies (M-A). */
+    private val writeLock = Mutex()
+
     /**
      * Saves an edited schedule. A removal already confirmed for the current cycle is re-keyed to the edited schedule's
-     * REMOVE id ([ConfigChange.carriedRemoval]), so the pause stays a pause after Apply. The new key is written BEFORE
-     * the config and the old one dropped AFTER it: every intermediate state has the removal logged under the id the
-     * stored config expects (an extra unknown id is ignored, as in [confirm]); a crash in between leaves at most a
-     * stale duplicate row, never an orphaned removal.
+     * REMOVE id and its INSERT bounded like a KEEP confirmation ([ConfigChange.carriedRemoval]), so the pause stays a
+     * pause after Apply and is never planned longer than the configured one. The new key is written BEFORE the config
+     * and the old one dropped AFTER it: every intermediate state has the removal logged under the id the stored config
+     * expects (an extra unknown id is ignored, as in [confirm]); a stale duplicate left by a crash in between is
+     * removed by the next Apply.
      */
-    suspend fun updateConfig(config: ScheduleConfig) {
-        val carried = configStore.config.first()?.let { old ->
-            ConfigChange.carriedRemoval(old, config, eventLogDao.allOnce().map(::toDomain))
-        }
+    suspend fun updateConfig(config: ScheduleConfig) = writeLock.withLock {
+        val logs = eventLogDao.allOnce().map(::toDomain)
+        val carried = configStore.config.first()?.let { old -> ConfigChange.carriedRemoval(old, config, logs) }
+        val saved = carried?.config ?: config
         carried?.let { eventLogDao.upsert(listOf(toEntity(it.to))) }
-        configStore.save(config)
-        carried?.let { eventLogDao.delete(it.from.eventId) }
+        configStore.save(saved)
+        carried?.takeIf { it.from.eventId != it.to.eventId }?.let { eventLogDao.delete(it.from.eventId) }
+        dropStaleRemovalCopies(saved)
     }
 
-    suspend fun skipPause() {
-        val config = configStore.config.first() ?: return
+    /** Deletes REMOVE rows that duplicate the current cycle's removal (same planned and confirmed time, other id). */
+    private suspend fun dropStaleRemovalCopies(config: ScheduleConfig) {
+        val rows = eventLogDao.allOnce()
+        val currentId = CycleCalculator.currentRemoveId(config)
+        val current = rows.firstOrNull { it.eventId == currentId } ?: return
+        rows.filter {
+            it.kind == EventKind.REMOVE.name && it.eventId != currentId &&
+                it.plannedAt == current.plannedAt && it.confirmedAt == current.confirmedAt
+        }.forEach { eventLogDao.delete(it.eventId) }
+    }
+
+    suspend fun skipPause() = writeLock.withLock {
+        val config = configStore.config.first() ?: return@withLock
         configStore.save(config.copy(skipPauseOnce = true))
     }
 
-    suspend fun cancelSkipPause() {
-        val config = configStore.config.first() ?: return
+    suspend fun cancelSkipPause() = writeLock.withLock {
+        val config = configStore.config.first() ?: return@withLock
         configStore.save(config.copy(skipPauseOnce = false))
     }
 
-    suspend fun confirm(eventId: String, confirmedAt: LocalDateTime, policy: ShiftPolicy) {
-        val config = configStore.config.first() ?: return
+    suspend fun confirm(eventId: String, confirmedAt: LocalDateTime, policy: ShiftPolicy) = writeLock.withLock {
+        val config = configStore.config.first() ?: return@withLock
         val logs = eventLogDao.allOnce().map(::toDomain)
-        val event = ScheduleEngine.generate(config).firstOrNull { it.id == eventId } ?: return
+        val event = ScheduleEngine.generate(config).firstOrNull { it.id == eventId } ?: return@withLock
         val result = ConfirmAction.confirm(config, event, logs, confirmedAt, policy)
         // Write logs BEFORE the config. The intermediate state "new log + old config" is harmless (a log keyed by an
         // unknown id is ignored by nextPending), whereas "new config + no log" would briefly show the event as pending again.

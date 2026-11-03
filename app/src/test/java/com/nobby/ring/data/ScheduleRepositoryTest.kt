@@ -170,10 +170,46 @@ class ScheduleRepositoryTest {
     }
 
     @Test
-    fun `one wear day more in the pause keeps the confirmed removal (I1)`() = runTest {
-        val pause = repo.confirmedRemoval()
+    fun `one wear day more in the pause keeps the confirmed removal and the break within the pause (I1, I-A)`() = runTest {
+        val pause = repo.confirmedRemoval() // out Nov 22 23:00
         repo.updateConfig(pause.config.copy(method = Method.ring(22, 7, LocalTime(21, 0))))
-        repo.assertPauseUntil(LocalDateTime(2026, 11, 30, 21, 0))
+        // Nov 30 21:00 would be a 7 d 22 h break; the latest planned time within 7 days of the removal is Nov 29 21:00.
+        repo.assertPauseUntil(LocalDateTime(2026, 11, 29, 21, 0))
+    }
+
+    @Test
+    fun `one pause day more in the pause plans no break longer than the new pause (I-A)`() = runTest {
+        val pause = repo.confirmedRemoval()
+        repo.updateConfig(pause.config.copy(method = Method.ring(21, 8, LocalTime(21, 0))))
+        repo.assertPauseUntil(LocalDateTime(2026, 11, 30, 21, 0)) // 7 d 22 h <= 8 d
+    }
+
+    @Test
+    fun `a start moved to just before the removal keeps the break within the pause (I-A)`() = runTest {
+        val pause = repo.confirmedRemoval()
+        repo.updateConfig(pause.config.copy(anchor = LocalDateTime(2026, 11, 20, 21, 0)))
+        repo.assertPauseUntil(LocalDateTime(2026, 11, 29, 21, 0)) // not Dec 18 (a 26-day break)
+    }
+
+    @Test
+    fun `a new ring put in on the removal's day stays in wear with its removal planned (I-B)`() = runTest {
+        val pause = repo.confirmedRemoval() // out Nov 22 23:00
+        repo.updateConfig(pause.config.copy(anchor = LocalDateTime(2026, 11, 22, 21, 0)))
+        val s = repo.state.filterNotNull().first()
+        assertEquals(PhaseKind.WEAR, s.position.phase)
+        assertEquals(true, s.position.ringIn)
+        assertEquals(EventKind.REMOVE, s.nextEvent!!.kind)
+        assertEquals(LocalDateTime(2026, 12, 13, 21, 0), s.nextEvent!!.plannedAt)
+        assertNull(s.overdue)
+    }
+
+    @Test
+    fun `apply removes a stale duplicate of the carried removal (M-A)`() = runTest {
+        val pause = repo.confirmedRemoval()
+        val row = db.eventLogDao().allOnce().single()
+        db.eventLogDao().upsert(listOf(row.copy(eventId = "REMOVE@stale"))) // left over by a crash between save and delete
+        repo.updateConfig(pause.config.copy(method = Method.ring(21, 7, LocalTime(20, 0))))
+        repo.assertPauseUntil(LocalDateTime(2026, 11, 29, 20, 0))
     }
 
     @Test
@@ -197,7 +233,8 @@ class ScheduleRepositoryTest {
         repo.updateConfig(pause.config.copy(anchor = LocalDateTime(2026, 10, 31, 21, 0)))
         repo.assertPauseUntil(LocalDateTime(2026, 11, 28, 21, 0))
         repo.updateConfig(pause.config.copy(anchor = LocalDateTime(2026, 11, 3, 21, 0)))
-        repo.assertPauseUntil(LocalDateTime(2026, 12, 1, 21, 0))
+        // Dec 1 21:00 would be an 8 d 22 h break; capped like an early removal (I-A).
+        repo.assertPauseUntil(LocalDateTime(2026, 11, 29, 21, 0))
     }
 
     @Test

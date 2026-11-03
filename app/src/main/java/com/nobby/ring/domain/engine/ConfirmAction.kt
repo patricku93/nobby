@@ -77,11 +77,8 @@ object ConfirmAction {
     }
 
     /**
-     * REMOVE: moves the anchor by whole days (SHIFT: by the day difference; KEEP: not at all) but never so far that
-     * the planned INSERT lands later than [confirmedAt] + pause, so the planned ring-free break never exceeds the
-     * configured one (an early removal pulls the INSERT forward even with KEEP). The INSERT is also never planned at
-     * or before [confirmedAt] (a removal at least a full pause late): then the anchor moves by the maximum shift, so
-     * the break restarts with at most the configured length. Within [CONFIRM_TOLERANCE_MINUTES] nothing moves.
+     * REMOVE: moves the anchor by [removeShiftDays] whole days and re-logs the removal under the shifted id.
+     * Without a planned INSERT in the horizon (continuous use) see [confirmRemoveUnbounded].
      */
     private fun confirmRemove(
         config: ScheduleConfig,
@@ -91,11 +88,28 @@ object ConfirmAction {
         policy: ShiftPolicy,
     ): ConfirmResult {
         val eventLog = EventLog(event.id, event.kind, event.plannedAt, confirmedAt)
-        if (withinTolerance(event, confirmedAt)) return ConfirmResult(config, logs + eventLog)
+        val shiftDays = removeShiftDays(config, event, confirmedAt, policy)
+            ?: return confirmRemoveUnbounded(config, event, logs, confirmedAt, policy)
+        if (shiftDays == 0) return ConfirmResult(config, logs + eventLog)
+        return relogShiftedRemove(config, shiftAnchor(config, shiftDays), event, logs, confirmedAt)
+    }
+
+    /**
+     * Whole days the anchor moves when the cycle-0 REMOVE [event] of [config] is confirmed at [confirmedAt] (SHIFT: by
+     * the day difference; KEEP: not at all), but never so far that the planned INSERT lands later than [confirmedAt] +
+     * pause, so the planned ring-free break never exceeds the configured one (an early removal pulls the INSERT forward
+     * even with KEEP). The INSERT is also never planned at or before [confirmedAt] (a removal at least a full pause
+     * late): then the anchor moves by the maximum shift, so the break restarts with at most the configured length.
+     * Within [CONFIRM_TOLERANCE_MINUTES] nothing moves (0). Null when no INSERT is planned in the horizon.
+     *
+     * Also used by [ConfigChange] when an edited schedule takes over a removal that is already confirmed.
+     */
+    internal fun removeShiftDays(config: ScheduleConfig, event: ScheduledEvent, confirmedAt: LocalDateTime, policy: ShiftPolicy): Int? {
+        if (withinTolerance(event, confirmedAt)) return 0
         val plannedInsert = ScheduleEngine.generate(config)
             .firstOrNull { it.kind == EventKind.INSERT && it.cycleIndex == 0 }
             ?.plannedAt
-            ?: return confirmRemoveUnbounded(config, event, logs, confirmedAt, policy)
+            ?: return null
         val latestInsert = confirmedAt.date.plus(config.method.pauseDays, DateTimeUnit.DAY).atTime(confirmedAt.time)
         val maxShiftDays = Math.floorDiv(minutesBetween(plannedInsert, latestInsert), MINUTES_PER_DAY).toInt()
         val policyShiftDays = when (policy) {
@@ -103,11 +117,12 @@ object ConfirmAction {
             ShiftPolicy.KEEP -> minOf(0, maxShiftDays)
         }
         val insertAfterShift = plannedInsert.date.plus(policyShiftDays, DateTimeUnit.DAY).atTime(plannedInsert.time)
-        val shiftDays = if (insertAfterShift <= confirmedAt) maxShiftDays else policyShiftDays
-        if (shiftDays == 0) return ConfirmResult(config, logs + eventLog)
-        val shifted = config.copy(anchor = config.anchor.date.plus(shiftDays, DateTimeUnit.DAY).atTime(config.anchor.time))
-        return relogShiftedRemove(config, shifted, event, logs, confirmedAt)
+        return if (insertAfterShift <= confirmedAt) maxShiftDays else policyShiftDays
     }
+
+    /** [config] with its anchor moved by whole [days], same time of day. */
+    internal fun shiftAnchor(config: ScheduleConfig, days: Int): ScheduleConfig =
+        config.copy(anchor = config.anchor.date.plus(days, DateTimeUnit.DAY).atTime(config.anchor.time))
 
     /** Continuous use without a planned INSERT in the horizon: SHIFT moves the anchor by the exact delay. */
     private fun confirmRemoveUnbounded(
