@@ -1,7 +1,7 @@
 package com.nobby.ring.ui.components
 
-import android.text.format.DateFormat
 import android.content.res.Resources
+import android.text.format.DateFormat
 import androidx.annotation.PluralsRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalConfiguration

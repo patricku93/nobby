@@ -40,7 +40,10 @@ fun NextEventCard(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             IconTile(
                 if (due) Icons.Rounded.Alarm else Icons.Rounded.Event,
-                if (kind == EventKind.INSERT) TileTone.PAUSE else TileTone.WEAR,
+                when {
+                    kind == EventKind.INSERT -> if (due) TileTone.STRONG_PAUSE else TileTone.PAUSE
+                    else -> if (due) TileTone.STRONG else TileTone.WEAR
+                },
             )
             Column(Modifier.weight(1f)) {
                 Text(kind.label(), style = MaterialTheme.typography.titleMedium)

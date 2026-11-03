@@ -55,7 +55,7 @@ fun NobbyCard(modifier: Modifier = Modifier, tone: CardTone = CardTone.PLAIN, co
     }
 }
 
-enum class TileTone { WEAR, PAUSE, NEUTRAL, ERROR }
+enum class TileTone { WEAR, PAUSE, STRONG, STRONG_PAUSE, NEUTRAL, ERROR }
 
 /** Rounded icon tile (16 dp radius) used on cards and rows. Decorative: the row text carries the meaning. */
 @Composable
@@ -64,6 +64,8 @@ fun IconTile(icon: ImageVector, tone: TileTone, modifier: Modifier = Modifier, s
     val (bg, fg) = when (tone) {
         TileTone.WEAR -> c.primaryContainer to c.onPrimaryContainer
         TileTone.PAUSE -> c.secondaryContainer to c.onSecondaryContainer
+        TileTone.STRONG -> c.primary to c.onPrimary
+        TileTone.STRONG_PAUSE -> c.secondary to c.onSecondary
         TileTone.NEUTRAL -> c.surfaceContainerHigh to c.onSurface
         TileTone.ERROR -> c.error to c.onError
     }
