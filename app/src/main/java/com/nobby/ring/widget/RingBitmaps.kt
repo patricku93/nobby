@@ -27,9 +27,6 @@ import com.nobby.ring.ui.components.RingTone
 import com.nobby.ring.ui.components.circleFitRows
 import com.nobby.ring.ui.components.drawRing
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.floor
-import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 /**
  * One tint group of the widget bracelet. Each layer is an alpha mask drawn by Home's [drawRing] with only its own
@@ -53,13 +50,19 @@ data class RingSpec(
 
 data class RingImage(val layer: RingLayer, val bitmap: Bitmap)
 
-/** Ring picture parameters for this widget state; [withLabel] false shows only the number (2x1). */
-fun WidgetData.ringSpec(edgePx: Int, density: Float, withLabel: Boolean): RingSpec =
-    RingSpec(tone, beads, done, head().number, if (withLabel) head().label.ifBlank { null } else null, edgePx, density)
+/**
+ * Ring picture parameters for this widget state; [withLabel] false shows only the number (2x1). The edge is the
+ * [RingBudget] cap and never the widget size, so every reported size of one update shares the same pictures.
+ */
+fun WidgetData.ringSpec(withLabel: Boolean): RingSpec {
+    val edge = RingBudget.edgePx(RingBudget.layersFor(tone).size)
+    val label = if (withLabel) head().label.ifBlank { null } else null
+    return RingSpec(tone, beads, done, head().number, label, edge, edge / RingBudget.HOME_RING_DP)
+}
 
 /** The Ring layout needs Single mode, the Ring style and a rendered picture; anything else shows Classic. */
 fun useRingLayout(config: WidgetConfig, images: List<RingImage>?): Boolean =
-    config.mode == WidgetMode.SINGLE && config.style == WidgetStyle.RING && images != null
+    config.mode == WidgetMode.SINGLE && config.style == WidgetStyle.RING && !images.isNullOrEmpty()
 
 /** Tint of [layer] for a ring in [tone]: Home's ring colours, the number in onSurface (or the bead red when urgent). */
 fun WidgetColors.ringTint(tone: RingTone, layer: RingLayer): Color = ring(tone).let {
@@ -74,11 +77,6 @@ fun WidgetColors.ringTint(tone: RingTone, layer: RingLayer): Color = ring(tone).
 }
 
 object RingBitmaps {
-    /**
-     * Upper bound for all layers of one ring (ALPHA_8, one byte per pixel). A widget update sends a picture per
-     * reported size (usually two) in one Binder transaction, which is capped at 1 MB for the whole process.
-     */
-    const val MAX_BYTES = 256 * 1024
     private const val NUMBER_SHARE = 0.36f // Home: 96 sp number in a 264 dp ring
     private const val WORD_SHARE = 0.17f // Home: 45 sp "Heute"
     private const val LABEL_SHARE = 0.13f
@@ -87,39 +85,43 @@ object RingBitmaps {
     private val failureLogged = AtomicBoolean(false)
     @Volatile private var fredoka: Typeface? = null
 
-    fun layersFor(tone: RingTone): List<RingLayer> =
-        RingLayer.entries.filter { it != RingLayer.SAFETY || tone == RingTone.SAFETY }
-
-    /** Picture edge for a ring of [sizeDp]: its real pixel size, capped (to a multiple of 4) so [layers] fit [MAX_BYTES]. */
-    fun edgePx(sizeDp: Float, density: Float, layers: Int): Int {
-        val want = (sizeDp * density).roundToInt().coerceAtLeast(1)
-        val cap = (floor(sqrt(MAX_BYTES / layers.coerceAtLeast(1).toDouble())).toInt() / 4) * 4
-        return minOf(want, cap)
-    }
-
     fun clearCache() = cache.evictAll()
 
     fun fredoka(context: Context): Typeface =
         fredoka ?: requireNotNull(ResourcesCompat.getFont(context, R.font.fredoka_variable)) { "Fredoka missing" }.also { fredoka = it }
 
-    /** Cached [render]; any failure (font, memory, drawing) is logged once and yields null, so the widget shows Classic. */
+    /**
+     * Cached [render]. A spec over [RingBudget.MAX_BYTES] is refused before drawing; any failure (font, out of memory,
+     * drawing) is logged once. Both yield null, so the widget shows Classic.
+     */
     fun renderOrNull(
         spec: RingSpec,
         render: (RingSpec, Typeface) -> List<RingImage> = ::render,
         font: () -> Typeface,
     ): List<RingImage>? {
         cache.get(spec)?.let { return it }
+        if (RingBudget.bytes(spec) > RingBudget.MAX_BYTES) {
+            logOnce(IllegalArgumentException("ring picture ${spec.edgePx} px over the budget"))
+            return null
+        }
         return try {
             render(spec, font()).also { cache.put(spec, it) }
         } catch (e: Exception) {
-            if (failureLogged.compareAndSet(false, true)) Log.e("NoBby", "widget ring render failed, showing classic", e)
+            logOnce(e)
+            null
+        } catch (e: OutOfMemoryError) {
+            logOnce(e)
             null
         }
     }
 
+    private fun logOnce(e: Throwable) {
+        if (failureLogged.compareAndSet(false, true)) Log.e("NoBby", "widget ring render failed, showing classic", e)
+    }
+
     fun render(spec: RingSpec, typeface: Typeface): List<RingImage> {
         val text = RingText(spec, typeface)
-        return layersFor(spec.tone).map { RingImage(it, drawLayer(spec, it, text)) }
+        return RingBudget.layersFor(spec.tone).map { RingImage(it, drawLayer(spec, it, text)) }
     }
 
     private fun drawLayer(spec: RingSpec, layer: RingLayer, text: RingText): Bitmap {

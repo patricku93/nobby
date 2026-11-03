@@ -21,6 +21,14 @@ data class WidgetStrings(
     val ringLabel: (RingLabel, Int) -> String = { _, _ -> "" },
     val today: String = "",
     val dayOf: (Int, Int) -> String = { _, _ -> "" },
+    /** Not started yet: "Start in N Tagen" / "Start heute" instead of a phase day. */
+    val startsIn: (Int) -> String = { "" },
+    val startsToday: String = "",
+    val notStarted: String = "",
+    /** TalkBack text of the ring: number + label, "Heute: event", and a detail (phase day, overdue event, not started). */
+    val ringCd: (String, String) -> String = { n, l -> "$n $l" },
+    val ringCdToday: (String, String) -> String = { t, k -> "$t $k" },
+    val withDetail: (String, String) -> String = { a, b -> "$a $b" },
 )
 
 data class WidgetRowData(val row: WidgetRow, val label: String, val value: String, val urgent: Boolean)
@@ -38,6 +46,8 @@ data class WidgetData(
     val done: Int = 0,
     /** Planned time of the event the ring counts down to (or the overdue one); null when nothing is pending. */
     val nextAt: LocalDateTime? = null,
+    /** What the ring picture shows, as text for TalkBack (the countdown exists only as pixels in Ring style). */
+    val description: String = "",
 )
 
 internal fun WidgetData.head(): WidgetHeadline = headline ?: WidgetHeadline("–", "")
@@ -45,7 +55,9 @@ internal fun WidgetData.urgent(): Boolean = tone == RingTone.OVERDUE || tone == 
 
 object WidgetModel {
     fun build(state: ScheduleState?, config: WidgetConfig, s: WidgetStrings): WidgetData {
-        if (state == null) return WidgetData(listOf(WidgetRowData(WidgetRow.NEXT_ANY, s.nextAny, s.none, false)), null, WidgetHeadline("–", s.none))
+        if (state == null) {
+            return WidgetData(listOf(WidgetRowData(WidgetRow.NEXT_ANY, s.nextAny, s.none, false)), null, WidgetHeadline("–", s.none), description = s.none)
+        }
         val due = state.nextEvent?.takeIf { state.daysUntilNext != null && state.daysUntilNext!! <= 0 }?.id
         val rows = when (config.mode) {
             WidgetMode.SINGLE -> listOf(WidgetRow.NEXT_ANY)
@@ -55,19 +67,43 @@ object WidgetModel {
         val p = state.position
         val length = p.phaseLengthDays.coerceAtLeast(1)
         val head = headline(ring, s)
+        val dayLabel = when {
+            // While overdue a full "Day 21/21" is misleading and the big number needs its unit: name it here, as Home does.
+            state.overdue != null -> head.label
+            !p.started -> startLabel(state, s)
+            else -> s.dayOf(p.dayInPhase.coerceAtMost(length), p.phaseLengthDays)
+        }
         return WidgetData(
             rows = rows.map { row(it, state, s) },
             dueEventId = due,
             headline = head,
-            progress = (p.dayInPhase.toFloat() / length).coerceIn(0f, 1f),
+            progress = if (p.started) (p.dayInPhase.toFloat() / length).coerceIn(0f, 1f) else 0f,
             mood = ring.mood,
             tone = ring.tone,
             beads = ring.beads,
             done = ring.done,
             nextAt = ring.event?.plannedAt,
-            // While overdue a full "Day 21/21" is misleading and the big number needs its unit: name it here, as Home does.
-            dayLabel = if (state.overdue != null) head.label else s.dayOf(p.dayInPhase.coerceAtMost(length), p.phaseLengthDays),
+            dayLabel = dayLabel,
+            description = description(ring, head, state, dayLabel, s),
         )
+    }
+
+    /** "Start in N Tagen" / "Start heute" while the first ring has not gone in yet. */
+    private fun startLabel(state: ScheduleState, s: WidgetStrings): String =
+        (state.daysUntilNext ?: 0).let { if (it <= 0) s.startsToday else s.startsIn(it) }
+
+    private fun description(ring: RingModel, head: WidgetHeadline, state: ScheduleState, dayLabel: String, s: WidgetStrings): String {
+        val main = when (ring.label) {
+            RingLabel.NONE -> return s.none
+            RingLabel.TODAY -> s.ringCdToday(head.number, head.label)
+            else -> s.ringCd(head.number, head.label)
+        }
+        val detail = when {
+            state.overdue != null -> s.kindLabel(state.overdue!!.event.kind)
+            !state.position.started -> s.notStarted
+            else -> dayLabel
+        }
+        return if (detail.isBlank()) main else s.withDetail(main, detail)
     }
 
     private fun headline(ring: RingModel, s: WidgetStrings): WidgetHeadline = when (ring.label) {
@@ -85,7 +121,10 @@ object WidgetModel {
             if (o == null) WidgetRowData(row, s.overdue, "–", false)
             else WidgetRowData(row, s.overdue, overdueText(o, s), true)
         }
-        WidgetRow.CYCLE_DAY -> WidgetRowData(row, s.cycleDay, s.cycleDayFmt(state.position.dayInCycle, state.position.cycleLengthDays), false)
+        WidgetRow.CYCLE_DAY -> {
+            val p = state.position
+            WidgetRowData(row, s.cycleDay, if (p.started) s.cycleDayFmt(p.dayInCycle, p.cycleLengthDays) else startLabel(state, s), false)
+        }
     }
 
     private fun countdown(row: WidgetRow, event: ScheduledEvent?, state: ScheduleState, s: WidgetStrings, labelOverride: String?): WidgetRowData {

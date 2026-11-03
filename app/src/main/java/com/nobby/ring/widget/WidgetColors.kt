@@ -32,7 +32,7 @@ data class WidgetColors(
     val mascotCheek: Color,
     val ink: Color,
     /** Home's ring colours per tone ([ringColors]), so the widget bracelet matches Home exactly. */
-    val ringTones: Map<RingTone, RingColors> = emptyMap(),
+    val ringTones: Map<RingTone, RingColors>,
 ) {
     fun ring(tone: RingTone): RingColors = ringTones.getValue(tone)
 

@@ -1,6 +1,6 @@
 package com.nobby.ring.widget
 
-import android.content.Context
+import android.graphics.Typeface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
@@ -33,7 +33,17 @@ internal val RING_PADDING = 8.dp
 private const val STICKER_ROOM = 1.08f
 private const val STICKER_SHARE = 0.3f
 
-private enum class RingShape { SMALL, SQUARE, WIDE }
+internal enum class RingShape { SMALL, SQUARE, WIDE }
+
+/** Room under the square ring for the Done pill (36 dp) and its gap. */
+internal val DONE_ROOM = 42.dp
+private val DONE_GAP = 6.dp
+
+/** Ring-style geometry of one widget size: the shape, the ring diameter (without the sticker room) and the Done pill. */
+internal data class RingLayoutModel(val shape: RingShape, val ring: Dp, val donePill: Boolean) {
+    /** 2x1 shows only the number in the ring; its label sits beside it. */
+    val withLabel: Boolean get() = shape != RingShape.SMALL
+}
 
 private fun shapeOf(size: DpSize): RingShape = when {
     size.height < RingWidget.MEDIUM.height -> RingShape.SMALL
@@ -43,40 +53,55 @@ private fun shapeOf(size: DpSize): RingShape = when {
 
 private fun content(size: DpSize) = DpSize(size.width - RING_PADDING * 2, size.height - RING_PADDING * 2)
 
-/** Diameter of the ring itself (without the sticker room) for this widget size. */
-private fun ringDp(size: DpSize): Dp {
+/** Done shows (under the ring when square, in the event column when wide) only while an event is [due]; 2x1 never. */
+internal fun ringLayoutModel(size: DpSize, due: Boolean): RingLayoutModel {
+    val shape = shapeOf(size)
     val c = content(size)
-    return when (shapeOf(size)) {
+    val pill = due && shape != RingShape.SMALL
+    val ring = when (shape) {
         RingShape.SMALL -> minOf(c.height, c.width / 2)
-        RingShape.SQUARE -> minOf(c.width, c.height) / STICKER_ROOM
+        RingShape.SQUARE -> minOf(c.width, c.height - if (pill) DONE_ROOM else 0.dp) / STICKER_ROOM
         RingShape.WIDE -> minOf(c.height, c.width / 2) / STICKER_ROOM
     }.coerceAtLeast(1.dp)
+    return RingLayoutModel(shape, ring, pill)
 }
 
-/** Ring pictures for this widget, or null for Classic (style, Multi mode or a failed render). */
-internal fun ringImages(data: WidgetData, config: WidgetConfig, size: DpSize, context: Context): List<RingImage>? {
-    if (config.mode != WidgetMode.SINGLE || config.style != WidgetStyle.RING) return null
-    val ring = ringDp(size).value
-    val density = context.resources.displayMetrics.density
-    val edge = RingBitmaps.edgePx(ring, density, RingBitmaps.layersFor(data.tone).size)
-    val spec = data.ringSpec(edge, edge / ring, withLabel = shapeOf(size) != RingShape.SMALL)
-    return RingBitmaps.renderOrNull(spec) { RingBitmaps.fredoka(context) }
+/**
+ * Ring pictures for this widget, or null for Classic (style, Multi mode, a failed render or a failed Ring update).
+ * The picture depends on the state and the shape's label only, never on [size] (see [RingBudget]).
+ */
+internal fun ringImages(data: WidgetData, config: WidgetConfig, size: DpSize, font: () -> Typeface): List<RingImage>? {
+    if (config.mode != WidgetMode.SINGLE || config.style != WidgetStyle.RING || RingFallback.active) return null
+    val spec = data.ringSpec(withLabel = ringLayoutModel(size, due = false).withLabel)
+    return RingBitmaps.renderOrNull(spec, font = font)
 }
 
 /** Ring style: 2x1 ring + label, square ring with sticker, wide ring + next event + Done (when due). */
 @Composable
 internal fun RingLayout(d: WidgetData, images: List<RingImage>, p: WidgetPalette, labels: WidgetLabels, size: DpSize) {
-    val ring = ringDp(size)
-    when (shapeOf(size)) {
+    val m = ringLayoutModel(size, due = d.dueEventId != null)
+    val ring = m.ring
+    when (m.shape) {
         RingShape.SMALL -> Row(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             RingStack(images, d, p, ring)
             Spacer(GlanceModifier.width(10.dp))
+            // 34 dp of height at the 50 dp minimum: one line each, 13 sp like Classic 2x1.
             Column(GlanceModifier.defaultWeight()) {
-                Text(d.head().label, style = text(p.of { if (d.urgent()) it.err else it.fg }, 14, FontWeight.Bold), maxLines = 2)
+                Text(d.head().label, style = text(p.of { if (d.urgent()) it.err else it.fg }, 13, FontWeight.Bold), maxLines = 1)
                 if (!d.urgent()) Text(d.dayLabel, style = text(p.of { it.sub }, 12), maxLines = 1)
             }
         }
-        RingShape.SQUARE -> StickerRing(images, d, p, ring)
+        RingShape.SQUARE -> Column(
+            GlanceModifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            StickerRing(images, d, p, ring)
+            if (m.donePill) {
+                Spacer(GlanceModifier.height(DONE_GAP))
+                DonePill(labels.done, d.urgent(), p)
+            }
+        }
         RingShape.WIDE -> Row(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             StickerRing(images, d, p, ring)
             Spacer(GlanceModifier.width(14.dp))
@@ -109,13 +134,16 @@ private fun StickerRing(images: List<RingImage>, d: WidgetData, p: WidgetPalette
     }
 }
 
-/** The alpha-mask layers of [RingBitmaps], each tinted with its day/night colour; together they are Home's ring. */
+/**
+ * The alpha-mask layers of [RingBitmaps], each tinted with its day/night colour; together they are Home's ring.
+ * The countdown exists only as pixels, so the first layer carries it as TalkBack text ([WidgetData.description]).
+ */
 @Composable
 private fun RingStack(images: List<RingImage>, d: WidgetData, p: WidgetPalette, ring: Dp) {
     Box(GlanceModifier.size(ring)) {
-        images.forEach { img ->
+        images.forEachIndexed { i, img ->
             Image(
-                ImageProvider(img.bitmap), null, GlanceModifier.fillMaxSize(),
+                ImageProvider(img.bitmap), if (i == 0) d.description else null, GlanceModifier.fillMaxSize(),
                 colorFilter = ColorFilter.tint(p.of { it.ringTint(d.tone, img.layer) }),
             )
         }

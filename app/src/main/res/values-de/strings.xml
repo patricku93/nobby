@@ -312,6 +312,14 @@
     <string name="widget_description">Countdown bis zum nächsten Ring-Schritt</string>
     <string name="widget_none">Alles erledigt</string>
     <string name="widget_day_of">Tag %1$d/%2$d</string>
+    <plurals name="widget_starts_in">
+        <item quantity="one">Start in %1$d Tag</item>
+        <item quantity="other">Start in %1$d Tagen</item>
+    </plurals>
+    <string name="widget_starts_today">Start heute</string>
+    <string name="widget_ring_cd">%1$s %2$s</string>
+    <string name="widget_ring_cd_today">%1$s: %2$s</string>
+    <string name="widget_ring_cd_detail">%1$s, %2$s</string>
     <plurals name="widget_in_days">
         <item quantity="one">in %1$d Tag</item>
         <item quantity="other">in %1$d Tagen</item>

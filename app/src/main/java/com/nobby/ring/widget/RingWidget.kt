@@ -79,22 +79,33 @@ interface WidgetEntryPoint {
 internal data class WidgetLabels(val done: String, val appName: String)
 
 class RingWidget : GlanceAppWidget() {
-    // Exact: the ring picture is rendered at the real widget size; the layouts below still switch at SMALL/MEDIUM/WIDE.
+    // Exact: the ring layouts size the ring to the real widget size and switch at SMALL/MEDIUM/WIDE. The ring picture
+    // itself never depends on the size (see RingBudget), so any number of reported sizes shares one set of bitmaps.
     override val sizeMode = SizeMode.Exact
+
+    /** A failed Ring update (e.g. a too-large transaction in AppWidgetManager) switches to Classic instead of the error UI. */
+    override fun onCompositionError(context: Context, glanceId: GlanceId, appWidgetId: Int, throwable: Throwable) {
+        if (RingFallback.onUpdateFailed(RingFallback.ringShown)) {
+            Log.e("NoBby", "widget ring update failed, falling back to classic", throwable)
+            return
+        }
+        super.onCompositionError(context, glanceId, appWidgetId, throwable)
+    }
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val ep = EntryPointAccessors.fromApplication(context.applicationContext, WidgetEntryPoint::class.java)
         val initialState = ep.schedule().currentState()
         val initialConfig = ep.widgetConfig().config.first()
         val initialTheme = ep.theme().theme.first()
-        val strings = widgetStrings(context)
-        val labels = WidgetLabels(done = context.getString(R.string.home_mark_done), appName = context.getString(R.string.app_name))
         // Collect the stores inside the composition: an existing Glance session does not re-run
         // provideGlance on updateAll(), so values captured above would go stale (config/theme changes lagged by one update).
         provideContent {
             val state by ep.schedule().state.collectAsState(initialState)
             val config by ep.widgetConfig().config.collectAsState(initialConfig)
             val theme by ep.theme().theme.collectAsState(initialTheme)
+            // Strings are read on every composition, so an app-locale change shows up with the next update.
+            val strings = widgetStrings(context)
+            val labels = WidgetLabels(done = context.getString(R.string.home_mark_done), appName = context.getString(R.string.app_name))
             val data = WidgetModel.build(state, config, strings)
             val palette = WidgetPalette(theme.palette.widgetColors(false), theme.palette.widgetColors(true), theme.mode)
             WidgetContent(data, config, palette, labels)
@@ -105,8 +116,10 @@ class RingWidget : GlanceAppWidget() {
     private fun WidgetContent(data: WidgetData, config: WidgetConfig, p: WidgetPalette, labels: WidgetLabels) {
         val size = LocalSize.current
         val small = size.height < MEDIUM.height
-        val ring = ringImages(data, config, size, LocalContext.current)
+        val context = LocalContext.current
+        val ring = ringImages(data, config, size) { RingBitmaps.fredoka(context) }
         val frame = GlanceModifier.fillMaxSize().background(p.background(config.backgroundOpacity)).cornerRadius(24.dp)
+        RingFallback.ringShown = useRingLayout(config, ring)
         if (useRingLayout(config, ring)) {
             Box(frame.padding(RING_PADDING).clickable(actionStartActivity<MainActivity>()), contentAlignment = Alignment.Center) {
                 RingLayout(data, ring!!, p, labels, size)
@@ -260,7 +273,7 @@ private fun faceRes(mood: MascotMood): Int = when (mood) {
     MascotMood.ALERT -> R.drawable.widget_nobby_face_alert
 }
 
-private fun widgetStrings(context: Context): WidgetStrings {
+internal fun widgetStrings(context: Context): WidgetStrings {
     val res = context.resources
     fun q(id: Int, n: Int): String = res.getQuantityString(id, n)
     fun qn(id: Int, n: Int): String = res.getQuantityString(id, n, n)
@@ -296,6 +309,12 @@ private fun widgetStrings(context: Context): WidgetStrings {
         },
         today = context.getString(R.string.ring_today),
         dayOf = { d, n -> context.getString(R.string.widget_day_of, d, n) },
+        startsIn = { qn(R.plurals.widget_starts_in, it) },
+        startsToday = context.getString(R.string.widget_starts_today),
+        notStarted = context.getString(R.string.phase_not_started),
+        ringCd = { n, l -> context.getString(R.string.widget_ring_cd, n, l) },
+        ringCdToday = { t, k -> context.getString(R.string.widget_ring_cd_today, t, k) },
+        withDetail = { a, b -> context.getString(R.string.widget_ring_cd_detail, a, b) },
     )
 }
 

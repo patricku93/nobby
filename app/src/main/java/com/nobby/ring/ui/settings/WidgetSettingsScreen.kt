@@ -28,6 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -113,14 +115,17 @@ private fun StyleChoice(cfg: WidgetConfig, save: (WidgetConfig) -> Unit) {
 }
 
 @Composable
-private fun OpacitySlider(value: Int, onChange: (Int) -> Unit, onDone: () -> Unit) {
+internal fun OpacitySlider(value: Int, onChange: (Int) -> Unit, onDone: () -> Unit) {
+    val label = stringResource(R.string.widget_background)
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(R.string.widget_background), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
         Text(stringResource(R.string.widget_background_value, value), style = MaterialTheme.typography.titleMedium)
     }
     Slider(
         value = value.toFloat(),
         onValueChange = { onChange(WidgetConfig.snapOpacity(it.roundToInt())) },
+        // The title is a separate Text: name the slider itself for TalkBack.
+        modifier = Modifier.semantics { contentDescription = label },
         onValueChangeFinished = onDone,
         valueRange = 0f..WidgetConfig.MAX_OPACITY.toFloat(),
         // 0, 10, ..., 100: nine stops between the ends.
