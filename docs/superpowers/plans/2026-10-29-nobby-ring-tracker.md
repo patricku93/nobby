@@ -1,6 +1,6 @@
 # NoBby Ring Tracker Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> Executed task by task; steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build v1 of NoBby, a native Android app that schedules, reminds about, confirms and calendar-syncs contraceptive-ring removal/insertion, with a Glance home-screen widget and curated themes.
 
@@ -94,7 +94,7 @@ app/src/test/java/com/nobby/ring/data/...     Robolectric tests
 - [ ] **Step 1: Generate the Gradle wrapper from the cached 8.14.3 distribution**
 
 ```bash
-cd "/c/Users/Patrick/Documents/Claude/NoBby - Pill"
+cd <repo root>
 export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
 GRADLE=$(ls -d ~/.gradle/wrapper/dists/gradle-8.14.3-all/*/gradle-8.14.3/bin/gradle)
 "$GRADLE" wrapper --gradle-version 8.14.3 --distribution-type all
@@ -112,7 +112,6 @@ local.properties
 .kotlin/
 captures/
 .cxx/
-.superpowers/
 ```
 
 - [ ] **Step 3: Write `settings.gradle.kts`**
@@ -488,7 +487,7 @@ class SmokeTest {
 export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
 ./gradlew.bat :app:testDebugUnitTest :app:assembleDebug --console=plain -q
 ```
-Expected: `BUILD SUCCESSFUL`, `app/build/outputs/apk/debug/app-debug.apk` exists. If the first run fails on a missing SDK path, create `local.properties` with `sdk.dir=C\:\\Users\\Patrick\\AppData\\Local\\Android\\Sdk`.
+Expected: `BUILD SUCCESSFUL`, `app/build/outputs/apk/debug/app-debug.apk` exists. If the first run fails on a missing SDK path, create `local.properties` with `sdk.dir=<path to your Android SDK>`.
 
 - [ ] **Step 11: Commit**
 

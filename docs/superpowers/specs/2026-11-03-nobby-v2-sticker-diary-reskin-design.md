@@ -4,7 +4,7 @@ Date: 2026-11-03
 Status: approved by owner 2026-11-03
 Builds on: `2026-10-29-nobby-ring-tracker-design.md` (v1, shipped at `acc0231`)
 Design source of truth: claude.ai/design project "NoBby Design System"
-(local copy `.superpowers/design/bundle/`, report `.superpowers/design/design-language-report.md`)
+(local copy `design/bundle/`, report `design/design-language-report.md`)
 
 ## 1. Goal
 
@@ -120,7 +120,7 @@ themed icons (API 33+). Fixed to Berry regardless of the chosen preset.
 - Unit: ThemeStore migration (all 5 old names + unknown), preset role completeness, contrast test (§4), extra-colour lookup, plurals for 0/1/n in DE and EN.
 - Robolectric/Compose: Home renders each ring state with the right mascot mood; Done sheet appears after confirm and dismisses; Appearance switches preset.
 - Existing 98 tests stay green.
-- Emulator (Pixel 3a API 34): every screen in light + dark, DE + EN, at least Berry + one other preset; widget all sizes; a reminder and an overdue notification with the new icons; landscape and font scale 1.3. Screenshots stored in `.superpowers/sdd/shots-v2/`.
+- Emulator (Pixel 3a API 34): every screen in light + dark, DE + EN, at least Berry + one other preset; widget all sizes; a reminder and an overdue notification with the new icons; landscape and font scale 1.3. Screenshots stored in a local, uncommitted folder.
 
 ## 15. Risks
 

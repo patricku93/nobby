@@ -6,7 +6,6 @@ local.properties
 .kotlin/
 captures/
 .cxx/
-.superpowers/
 
 # Release signing keys never go into git
 *.jks

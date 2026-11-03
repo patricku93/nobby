@@ -11,12 +11,12 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
 
-/** Guards against hand edits of the generated tables. Skipped where the git-ignored design bundle is absent. */
+/** Guards against hand edits of the generated tables. Skipped where the local design bundle is absent (set NOBBY_DESIGN_DIR to its folder to run it). */
 @RunWith(RobolectricTestRunner::class)
 class TokenDriftTest {
     @Test
     fun `generated preset tables equal tokens json`() {
-        val file = File("../.superpowers/design/bundle/tokens.json")
+        val file = File((System.getenv("NOBBY_DESIGN_DIR") ?: "../design") + "/bundle/tokens.json")
         assumeTrue("design bundle not present", file.exists())
         val root = JSONObject(file.readText())
         assertEquals(root.getString("\$version"), TOKENS_VERSION)

@@ -1,15 +1,15 @@
 # NoBby v2 "Sticker Diary" Re-skin Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> Executed task by task; steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the v1 look of the working NoBby Android app with the approved "Sticker Diary" design language (warm paper, cocoa ink, five colour presets, bead-bracelet countdown, Fredoka/Nunito Sans, the NoBby mascot, a Done celebration sheet), without changing behaviour, data, alarms, calendar sync or the domain engine except the three v1.1 fixes in spec §11.
 
-**Architecture:** Colour comes from one generated Kotlin table (`ui/theme/PresetTables.kt`, produced by `.superpowers/design/tools/gen-kotlin.js` from `bundle/tokens.json`), wrapped by `Palettes.kt` (Material 3 `ColorScheme`) and `NobbyColors.kt` (`NobbyExtraColors` via `NobbyTheme.extra`). The mascot is drawn in Compose `Canvas` from the exact `nobby.js` path geometry (`ui/mascot/`), so every preset recolours it at runtime; the same painter renders notification bitmaps, while the Glance widget uses white VectorDrawable masks tinted per preset. Screens are split into a stateful `XScreen` (Hilt view model) and a stateless `XContent` so Robolectric + Compose UI tests can drive them.
+**Architecture:** Colour comes from one generated Kotlin table (`ui/theme/PresetTables.kt`, produced by `design/tools/gen-kotlin.js` from `bundle/tokens.json`), wrapped by `Palettes.kt` (Material 3 `ColorScheme`) and `NobbyColors.kt` (`NobbyExtraColors` via `NobbyTheme.extra`). The mascot is drawn in Compose `Canvas` from the exact `nobby.js` path geometry (`ui/mascot/`), so every preset recolours it at runtime; the same painter renders notification bitmaps, while the Glance widget uses white VectorDrawable masks tinted per preset. Screens are split into a stateful `XScreen` (Hilt view model) and a stateless `XContent` so Robolectric + Compose UI tests can drive them.
 
 **Tech Stack:** Kotlin 2.1.0, AGP 8.7.3, Compose BOM 2024.12.01 (ui 1.7.6, material3 1.3.1, material-icons-extended), Glance 1.1.1, Hilt 2.53.1, Room 2.6.1, DataStore 1.1.1, kotlinx-datetime 0.6.1, JUnit 4, Robolectric 4.14.1, compose ui-test-junit4 (added in Task 1), Node (any LTS) for the token generator.
 
 **Spec:** `docs/superpowers/specs/2026-11-03-nobby-v2-sticker-diary-reskin-design.md` (approved 2026-11-03, no undo button on the Done sheet).
-**Design source of truth:** `.superpowers/design/bundle/` (`tokens.json`, `assets/nobby.js`, `assets/nobby.css`, `components/*`, `screens/*`) and `.superpowers/design/design-language-report.md` ("v2.1 additions", the 30 contrast pairs). `.superpowers/` is git-ignored: it exists in the working copy but is never committed.
+**Design source of truth:** `design/bundle/` (`tokens.json`, `assets/nobby.js`, `assets/nobby.css`, `components/*`, `screens/*`) and `design/design-language-report.md` ("v2.1 additions", the 30 contrast pairs). `design/` and `notes/` are local working folders and are not committed.
 
 ## Global Constraints
 
@@ -40,7 +40,7 @@
 ```
 gradle/libs.versions.toml                       unchanged (compose-ui-test-junit4 already declared)
 app/build.gradle.kts                            + testImplementation(platform(compose-bom)), compose-ui-test-junit4      (T1)
-.superpowers/design/tools/gen-kotlin.js         NEW, git-ignored: tokens.json -> PresetTables.kt                          (T2)
+design/tools/gen-kotlin.js         NEW, git-ignored: tokens.json -> PresetTables.kt                          (T2)
 
 app/src/main/res/
   font/fredoka_variable.ttf, font/nunito_sans_variable.ttf     NEW (OFL, Google Fonts repo)                          (T1)
@@ -114,7 +114,7 @@ Deleted along the way: `ui/components/RingProgress.kt` and `ui/components/EventC
 7. **Copy first:** the copy pass is Task 3 (before the screens) so every screen task only references final keys; keys still used by v1 screens are marked "legacy" and removed by the task that stops using them. The brief mentions an existing EN/DE parity test, but none exists in `app/src/test`; Task 3 adds `StringsParityTest` (strings, plurals, placeholders).
 8. **v1.1 fix 2 root cause:** `displayLarge` was overridden to 96 sp and Material's `TimePicker` header uses `displayLarge`; Task 1 restores 57 sp and moves the countdown to `NobbyType.countdown`.
 9. **v1.1 fix 3 root cause:** a shifted late removal is logged under the regenerated id with its original `plannedAt`; `CycleCalculator` now also matches the current cycle's REMOVE id (Task 4).
-10. **Generator location:** `gen-kotlin.js` sits with the other design tools in git-ignored `.superpowers/design/tools/`; its output `PresetTables.kt` is committed and `TokenDriftTest` compares it with `tokens.json` whenever the bundle is present (skipped otherwise).
+10. **Generator location:** `gen-kotlin.js` sits with the other design tools in git-ignored `design/tools/`; its output `PresetTables.kt` is committed and `TokenDriftTest` compares it with `tokens.json` whenever the bundle is present (skipped otherwise).
 11. **`NobbyExtraColors`** carries the spec's fields (wearBand, pauseBand, sticker, mascotBody, mascotCheek, mascotRim, overdue, overdueContainer) plus `ink`, `shadow` and `dark`, all read from the same generated table.
 12. **Bottom bar:** standard full-width `NavigationBar` on `surfaceContainerLowest` with the pill indicator in `primaryContainer` and filled/outlined icons, not the floating pill of the phone mock-up (keeps inset handling unchanged).
 
@@ -406,7 +406,7 @@ git commit -m "feat(theme): bundle Fredoka and Nunito Sans, v2 type scale" -m "d
 ### Task 2: Five colour presets, token generator, ThemeStore migration, theme wiring
 
 **Files:**
-- Create (git-ignored, not committed): `.superpowers/design/tools/gen-kotlin.js`
+- Create (git-ignored, not committed): `design/tools/gen-kotlin.js`
 - Create (generated, committed): `app/src/main/java/com/nobby/ring/ui/theme/PresetTables.kt`
 - Modify (replace): `app/src/main/java/com/nobby/ring/domain/model/ThemeSpec.kt`, `app/src/main/java/com/nobby/ring/ui/theme/Palettes.kt`, `app/src/main/java/com/nobby/ring/ui/theme/Theme.kt`
 - Create: `app/src/main/java/com/nobby/ring/ui/theme/NobbyColors.kt`
@@ -426,14 +426,14 @@ git commit -m "feat(theme): bundle Fredoka and Nunito Sans, v2 type scale" -m "d
   - `@Composable fun NobbyTheme(theme: ThemeSpec, content: @Composable () -> Unit)` (unchanged signature)
   - String keys `palette_berry`, `palette_lilac`, `palette_peach`, `palette_matcha`, `palette_blueberry`
 
-- [ ] **Step 1: Write the generator** `.superpowers/design/tools/gen-kotlin.js`
+- [ ] **Step 1: Write the generator** `design/tools/gen-kotlin.js`
 
-The `.superpowers/` folder is git-ignored by the owner's choice, so this script stays local like the other design tools; its output is committed. It refuses to write anything if `tokens.json` is inconsistent.
+The local `design/` folder is not committed, so this script stays local like the other design tools; its output is committed. It refuses to write anything if `tokens.json` is inconsistent.
 
 ```js
 /* Generates the Kotlin colour tables for the app from bundle/tokens.json, so hex values are
    never copied by hand and cannot drift from the design source of truth.
-   Usage (from .superpowers/design):  node tools/gen-kotlin.js [outFile]
+   Usage (from design):  node tools/gen-kotlin.js [outFile]
    Default outFile: ../../app/src/main/java/com/nobby/ring/ui/theme/PresetTables.kt
    Exit 1 (and write nothing) when tokens.json is inconsistent. */
 'use strict';
@@ -472,8 +472,8 @@ if (errors.length) {
 
 const kColor = (hex) => `Color(0xFF${hex.slice(1).toUpperCase()})`;
 const L = [];
-L.push(`// GENERATED by .superpowers/design/tools/gen-kotlin.js from bundle/tokens.json ${tokens.$version}.`);
-L.push('// Do not edit by hand: change tokens.json, run `node tools/gen-kotlin.js` in .superpowers/design and commit the result.');
+L.push(`// GENERATED by design/tools/gen-kotlin.js from bundle/tokens.json ${tokens.$version}.`);
+L.push('// Do not edit by hand: change tokens.json, run `node tools/gen-kotlin.js` in design and commit the result.');
 L.push('package com.nobby.ring.ui.theme');
 L.push('');
 L.push('import androidx.compose.runtime.Immutable');
@@ -521,7 +521,7 @@ console.log(`Wrote ${out}: ${ORDER.length} presets x ${THEMES.length} modes x ${
 - [ ] **Step 2: Generate `PresetTables.kt`**
 
 ```bash
-(cd .superpowers/design && node tools/check-contrast.js && node tools/gen-kotlin.js)
+(cd design && node tools/check-contrast.js && node tools/gen-kotlin.js)
 wc -l app/src/main/java/com/nobby/ring/ui/theme/PresetTables.kt
 sed -n '151,155p' app/src/main/java/com/nobby/ring/ui/theme/PresetTables.kt
 ```
@@ -768,7 +768,7 @@ import java.io.File
 class TokenDriftTest {
     @Test
     fun `generated preset tables equal tokens json`() {
-        val file = File("../.superpowers/design/bundle/tokens.json")
+        val file = File("../design/bundle/tokens.json")
         assumeTrue("design bundle not present", file.exists())
         val root = JSONObject(file.readText())
         assertEquals(root.getString("\$version"), TOKENS_VERSION)
@@ -1130,7 +1130,7 @@ git add app/src/main/java/com/nobby/ring/domain/model/ThemeSpec.kt app/src/main/
   app/src/main/java/com/nobby/ring/widget/RingWidget.kt app/src/main/res/values app/src/main/res/values-de app/src/main/res/values-night \
   app/src/test/java/com/nobby/ring/data/ThemeStoreTest.kt app/src/test/java/com/nobby/ring/ui/theme \
   app/src/test/java/com/nobby/ring/ui/onboarding/OnboardingViewModelTest.kt
-git commit -m "feat(theme): five generated colour presets with v1 palette migration" -m "PresetTables.kt is generated from tokens.json by .superpowers/design/tools/gen-kotlin.js; contrast, completeness and drift tests guard it."
+git commit -m "feat(theme): five generated colour presets with v1 palette migration" -m "PresetTables.kt is generated from tokens.json by design/tools/gen-kotlin.js; contrast, completeness and drift tests guard it."
 ```
 
 ---
@@ -8102,7 +8102,7 @@ git commit -m "feat(notifications): ring glyph small icon, preset NoBby large ic
 
 ### Task 16: Emulator verification (Pixel 3a API 34)
 
-No new code unless a check fails; fixes go in separate `fix(...)` commits with a test where one is possible. Screenshots go to `.superpowers/sdd/shots-v2/` (git-ignored, not committed). Write the results table to `.superpowers/sdd/v2-verify-report.md` (git-ignored) and add one line to `.superpowers/sdd/progress.md`.
+No new code unless a check fails; fixes go in separate `fix(...)` commits with a test where one is possible. Screenshots go to `notes/shots-v2/` (git-ignored, not committed). Write the results table to `notes/v2-verify-report.md` (git-ignored) and add one line to `notes/progress.md`.
 
 **Files:** none in the repo (unless a fix is needed).
 
@@ -8110,13 +8110,13 @@ No new code unless a check fails; fixes go in separate `fix(...)` commits with a
 
 ```bash
 export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"; export PATH="${PATH//\"/}"
-SDK="/c/Users/Patrick/AppData/Local/Android/Sdk"; ADB="$SDK/platform-tools/adb"
+SDK="${ANDROID_HOME:?set ANDROID_HOME}"; ADB="$SDK/platform-tools/adb"
 "$SDK/emulator/emulator" -avd Pixel_3a_API_34_extension_level_7_x86_64 -no-snapshot-save >/dev/null 2>&1 &
 "$ADB" wait-for-device; until [ "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; do sleep 2; done
 ./gradlew.bat :app:testDebugUnitTest :app:assembleDebug --console=plain
 "$ADB" uninstall com.nobby.ring; "$ADB" install -r app/build/outputs/apk/debug/app-debug.apk
-mkdir -p .superpowers/sdd/shots-v2
-shot() { "$ADB" exec-out screencap -p > ".superpowers/sdd/shots-v2/$1.png"; }
+mkdir -p notes/shots-v2
+shot() { "$ADB" exec-out screencap -p > "notes/shots-v2/$1.png"; }
 ```
 
 Expected: `BUILD SUCCESSFUL`, `Success` from install. Use `shot <name>` after each check below. Clear logcat first (`"$ADB" logcat -c`) and keep `"$ADB" logcat -s AndroidRuntime:E NoBby:E` clean throughout.
@@ -8164,7 +8164,7 @@ Add the widget to the home screen; resize to 2×1, 2×2 and 4×2 where the launc
 
 - [ ] **Step 9: Report**
 
-Write `.superpowers/sdd/v2-verify-report.md` with one row per step (PASS / FAIL / PARTIAL + screenshot names), append `v2 emulator verification: <n>/8 pass; shots in .superpowers/sdd/shots-v2/` to `.superpowers/sdd/progress.md`, and run the verify command once more. If any fix was committed, the final state must again be `BUILD SUCCESSFUL`.
+Write `notes/v2-verify-report.md` with one row per step (PASS / FAIL / PARTIAL + screenshot names), append `v2 emulator verification: <n>/8 pass; shots in notes/shots-v2/` to `notes/progress.md`, and run the verify command once more. If any fix was committed, the final state must again be `BUILD SUCCESSFUL`.
 
 ---
 
