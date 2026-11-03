@@ -122,13 +122,13 @@
     <string name="onb_safety_wear">More than 28 days of wear can reduce protection.</string>
     <string name="onb_safety_pause">A break longer than 7 days can reduce protection.</string>
     <string name="onb_where_title">Where are you now?</string>
-    <string name="onb_where_body">When did you last insert the ring? NoBby works out everything else from that.</string>
+    <string name="onb_where_body">When did you last insert the ring? I\'ll work out everything else from that.</string>
     <string name="onb_anchor_title">When did the current ring go in?</string>
     <string name="onb_anchor_date_label">Inserted on</string>
     <string name="onb_anchor_date">Date</string>
     <string name="onb_anchor_time">Time</string>
     <string name="onb_reminders_title">I\'ll let you know</string>
-    <string name="onb_reminders_body">When should NoBby remind you? You can change it all later.</string>
+    <string name="onb_reminders_body">When should I remind you? You can change it all later.</string>
     <string name="onb_reminder_line">%1$s (%2$s)</string>
     <plurals name="onb_overdue_line">
         <item quantity="one">If overdue: every hour until you tap Done</item>
@@ -164,8 +164,8 @@
     <string name="reminder_enabled">On</string>
     <string name="reminder_row_meta">%1$s · %2$s</string>
     <string name="reminder_row_meta_off">%1$s · %2$s · off</string>
-    <string name="overdue_repeat">If overdue: remind every (hours)</string>
-    <string name="overdue_snooze">Snooze means (hours)</string>
+    <string name="overdue_repeat">Overdue: reminder every (hours)</string>
+    <string name="overdue_snooze">Snooze for (hours)</string>
 
     <!-- notifications -->
     <string name="channel_low">Quiet reminders</string>
