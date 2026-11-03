@@ -1,5 +1,7 @@
 package com.nobby.ring.ui.home
 
+import android.app.AlarmManager
+import android.app.NotificationManager
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -16,6 +18,7 @@ import com.nobby.ring.domain.engine.ShiftPolicy
 import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.Method
 import com.nobby.ring.domain.model.ScheduleConfig
+import com.nobby.ring.notifications.AlarmReceiver
 import com.nobby.ring.notifications.Notifier
 import com.nobby.ring.notifications.ReminderScheduler
 import com.nobby.ring.notifications.ScheduleChangeListener
@@ -31,6 +34,7 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -39,6 +43,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -104,6 +109,7 @@ class HomeViewModelTest {
         vm.onPolicyChosen(ShiftPolicy.SHIFT)
         dispatcher.scheduler.advanceUntilIdle()
         vm.uiState.first { it.state?.nextEvent?.kind == EventKind.INSERT }
+        vm.uiState.first { !it.busy } // notifyChanged() runs after the state flips; wait for the commit to finish
         dispatcher.scheduler.advanceUntilIdle()
         assertNull(vm.uiState.value.pendingConfirm)
         val next = vm.uiState.value.state!!.nextEvent!!
@@ -154,6 +160,48 @@ class HomeViewModelTest {
         assertNull(vm.uiState.value.pendingConfirm)
         assertEquals(0, db.eventLogDao().allOnce().size)
         assertEquals(0, changes)
+    }
+
+    private fun overdueAlarm() = (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).let { am ->
+        shadowOf(am).scheduledAlarms.singleOrNull { shadowOf(it.operation).savedIntent.action == AlarmReceiver.ACTION_OVERDUE }
+    }
+
+    @Test
+    fun `snooze cancels the overdue notification and re-arms the overdue alarm for that event`() = runTest(dispatcher) {
+        nowValue = LocalDateTime(2026, 11, 24, 22, 0) // REMOVE planned 2026-11-22 21:00 is overdue
+        val vm = vm()
+        backgroundScope.launch { vm.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+        val overdue = vm.uiState.first { it.state != null }.state!!.overdue!!
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        Notifier(context).showOverdue(overdue.event.kind, overdue.event.plannedAt, overdue.event.id, safetyBreached = false)
+        assertNotNull(shadowOf(nm).getNotification(Notifier.OVERDUE_ID))
+        vm.snooze()
+        repeat(500) { // the DataStore read inside snooze() runs on a real IO thread, so poll for its effect
+            dispatcher.scheduler.advanceUntilIdle()
+            if (overdueAlarm() != null) return@repeat
+            Thread.sleep(10)
+        }
+        assertNull(shadowOf(nm).getNotification(Notifier.OVERDUE_ID))
+        val alarm = overdueAlarm()!!
+        assertEquals(overdue.event.id, shadowOf(alarm.operation).savedIntent.getStringExtra(AlarmReceiver.EXTRA_EVENT_ID))
+        val snoozeHours = OverdueConfigStore(ds).config.first().snoozeHours
+        assertEquals(clock.now().toInstant(clock.zone).toEpochMilliseconds() + snoozeHours * 3_600_000L, alarm.triggerAtTime)
+    }
+
+    @Test
+    fun `snooze without an overdue event does nothing`() = runTest(dispatcher) {
+        nowValue = LocalDateTime(2026, 11, 12, 12, 0) // mid-wear: nothing overdue
+        val vm = vm()
+        backgroundScope.launch { vm.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+        vm.uiState.first { it.state != null }
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        Notifier(context).showOverdue(EventKind.REMOVE, LocalDateTime(2026, 11, 22, 21, 0), "x", safetyBreached = false)
+        vm.snooze()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertNotNull(shadowOf(nm).getNotification(Notifier.OVERDUE_ID))
+        assertNull(overdueAlarm())
     }
 
     @Test

@@ -233,6 +233,8 @@ private fun NextSection(state: ScheduleState, model: RingModel, busy: Boolean, a
         val safety = if (!overdue.safetyBreached) null
         else stringResource(if (overdue.event.kind == EventKind.INSERT) R.string.home_overdue_safety_pause else R.string.home_overdue_safety_wear)
         OverdueCard(overdue.event.kind, overdue.event.plannedAt, overText, safety, actions.onDone, actions.onSnooze, enabled = !busy)
+        // Skip-pause only turns the next REMOVE into a SWAP, so it stays reachable while a REMOVE is overdue.
+        if (overdue.event.kind == EventKind.REMOVE) SkipPauseToggle(state, busy, actions)
         return
     }
     val next = state.nextEvent ?: return
@@ -241,10 +243,15 @@ private fun NextSection(state: ScheduleState, model: RingModel, busy: Boolean, a
         if (state.isDue) {
             NobbyButton(actions.onDone, enabled = !busy, icon = Icons.Rounded.Check) { Text(stringResource(R.string.home_mark_done)) }
         }
-        NobbyButton(actions.onToggleSkipPause, enabled = !busy, tone = ButtonTone.TEXT) {
-            Text(stringResource(if (state.config.skipPauseOnce) R.string.home_skip_pause_cancel else R.string.home_skip_pause))
-        }
+        SkipPauseToggle(state, busy, actions)
     })
+}
+
+@Composable
+private fun SkipPauseToggle(state: ScheduleState, busy: Boolean, actions: HomeActions) {
+    NobbyButton(actions.onToggleSkipPause, enabled = !busy, tone = ButtonTone.TEXT) {
+        Text(stringResource(if (state.config.skipPauseOnce) R.string.home_skip_pause_cancel else R.string.home_skip_pause))
+    }
 }
 
 /** One-line notice above the cards when a safety threshold is crossed, so it is visible without scrolling. */

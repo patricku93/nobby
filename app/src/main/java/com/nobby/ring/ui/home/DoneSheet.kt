@@ -28,6 +28,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -89,6 +90,9 @@ fun DoneSheet(celebration: Celebration, onDismiss: () -> Unit, modifier: Modifie
     var dragY by remember(celebration) { mutableFloatStateOf(0f) }
     val dismissPx = with(LocalDensity.current) { 80.dp.toPx() }
 
+    // Leaving Home (or any other removal) clears the celebration so it cannot re-show on a later return.
+    DisposableEffect(Unit) { onDispose { dismiss() } }
+
     LaunchedEffect(celebration) {
         enter.animateTo(1f, tween(if (reduced) NobbyMotion.SHORT else NobbyMotion.LONG, easing = NobbyMotion.Decelerate))
     }
@@ -122,7 +126,7 @@ fun DoneSheet(celebration: Celebration, onDismiss: () -> Unit, modifier: Modifie
                         dragY = (dragY + dy).coerceAtLeast(0f)
                     }
                 }
-                .clickable(onClick = { dismiss() })
+                .clickable(onClickLabel = stringResource(R.string.action_close), onClick = { dismiss() })
                 .navigationBarsPadding()
                 .padding(start = 24.dp, end = 24.dp, top = 10.dp, bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,

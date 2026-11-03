@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.nobby.ring.data.repo.ScheduleRepository
 import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.EventLog
@@ -19,6 +20,7 @@ import com.nobby.ring.ui.mascot.MascotMoodKey
 import com.nobby.ring.ui.theme.NobbyTheme
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -89,5 +91,36 @@ class HomeContentTest {
         compose.mainClock.advanceTimeBy(AUTO_DISMISS_MS + 1_000)
         compose.mainClock.advanceTimeByFrame()
         compose.onNodeWithTag(DONE_SHEET_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun `overdue remove still offers skip pause and tapping it fires the action`() {
+        var toggled = 0
+        compose.setContent {
+            NobbyTheme(ThemeSpec()) {
+                HomeContent(
+                    HomeUiState(state(LocalDateTime(2026, 11, 24, 22, 0))),
+                    exactAlarmsAllowed = true, notificationsEnabled = true,
+                    actions = HomeActions(onToggleSkipPause = { toggled++ }),
+                )
+            }
+        }
+        compose.onNodeWithText("Skip break").performScrollTo().performClick()
+        assertEquals(1, toggled)
+    }
+
+    @Test
+    fun `removing the done sheet from composition dismisses the celebration`() {
+        compose.mainClock.autoAdvance = false
+        var show by mutableStateOf(true)
+        var dismissed = 0
+        compose.setContent {
+            NobbyTheme(ThemeSpec()) { if (show) DoneSheet(celebration, onDismiss = { dismissed++ }) }
+        }
+        assertEquals(0, dismissed)
+        show = false
+        compose.mainClock.advanceTimeByFrame()
+        compose.waitForIdle()
+        assertEquals(1, dismissed)
     }
 }
