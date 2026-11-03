@@ -8,7 +8,12 @@ plugins {
 
 // Release builds pass the version in (-PNOBBY_VERSION_NAME=2.1.0 or env); versionCode = major*10000 + minor*100 + patch.
 val nobbyVersionName: String = (findProperty("NOBBY_VERSION_NAME") as String?) ?: System.getenv("NOBBY_VERSION_NAME") ?: "2.0.0"
-val nobbyVersionCode: Int = ((findProperty("NOBBY_VERSION_CODE") as String?) ?: System.getenv("NOBBY_VERSION_CODE"))?.toIntOrNull() ?: 20000
+val nobbyVersionCodeRaw: String? = (findProperty("NOBBY_VERSION_CODE") as String?) ?: System.getenv("NOBBY_VERSION_CODE")
+val nobbyVersionCode: Int = when {
+    nobbyVersionCodeRaw == null -> 20000
+    else -> nobbyVersionCodeRaw.toIntOrNull()
+        ?: throw GradleException("NOBBY_VERSION_CODE must be a whole number, got '$nobbyVersionCodeRaw'")
+}
 
 android {
     namespace = "com.nobby.ring"
