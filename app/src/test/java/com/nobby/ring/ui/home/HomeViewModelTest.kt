@@ -24,8 +24,12 @@ import com.nobby.ring.notifications.Notifier
 import com.nobby.ring.notifications.ReminderScheduler
 import com.nobby.ring.notifications.ScheduleChangeListener
 import com.nobby.ring.notifications.ScheduleChangeNotifier
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asExecutor
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -53,6 +57,11 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class HomeViewModelTest {
     private val dispatcher = StandardTestDispatcher()
+    /**
+     * Room and DataStore run on [dispatcher] too: with their default real IO threads a write could finish (and post its
+     * continuation to Main) after advanceUntilIdle returned or while tearDown resets Main, which made these tests flaky.
+     */
+    private val ioScope = CoroutineScope(dispatcher + SupervisorJob())
     private lateinit var db: NobbyDatabase
     private lateinit var repo: ScheduleRepository
     private lateinit var context: Context
@@ -65,16 +74,17 @@ class HomeViewModelTest {
     }
 
     @Before
-    fun setUp() = runTest {
+    fun setUp() = runTest(dispatcher) {
         Dispatchers.setMain(dispatcher)
         context = ApplicationProvider.getApplicationContext()
-        db = Room.inMemoryDatabaseBuilder(context, NobbyDatabase::class.java).allowMainThreadQueries().build()
-        ds = PreferenceDataStoreFactory.create { File(context.cacheDir, "home-${System.nanoTime()}.preferences_pb") }
+        db = Room.inMemoryDatabaseBuilder(context, NobbyDatabase::class.java).allowMainThreadQueries()
+            .setQueryExecutor(dispatcher.asExecutor()).setTransactionExecutor(dispatcher.asExecutor()).build()
+        ds = PreferenceDataStoreFactory.create(scope = ioScope) { File(context.cacheDir, "home-${System.nanoTime()}.preferences_pb") }
         repo = ScheduleRepository(MethodConfigStore(ds), db.eventLogDao(), clock)
         repo.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 1, 21, 0)))
     }
 
-    @After fun tearDown() { Dispatchers.resetMain(); db.close() }
+    @After fun tearDown() { ioScope.cancel(); Dispatchers.resetMain(); db.close() }
 
     private fun vm() = HomeViewModel(
         context, repo, clock,
@@ -180,11 +190,7 @@ class HomeViewModelTest {
         Notifier(context, ThemeStore(ds)).showOverdue(overdue.event.kind, overdue.event.plannedAt, overdue.event.id, safetyBreached = false)
         assertNotNull(shadowOf(nm).getNotification(Notifier.OVERDUE_ID))
         vm.snooze()
-        repeat(500) { // the DataStore read inside snooze() runs on a real IO thread, so poll for its effect
-            dispatcher.scheduler.advanceUntilIdle()
-            if (overdueAlarm() != null) return@repeat
-            Thread.sleep(10)
-        }
+        dispatcher.scheduler.advanceUntilIdle()
         assertNull(shadowOf(nm).getNotification(Notifier.OVERDUE_ID))
         val alarm = overdueAlarm()!!
         assertEquals(overdue.event.id, shadowOf(alarm.operation).savedIntent.getStringExtra(AlarmReceiver.EXTRA_EVENT_ID))
