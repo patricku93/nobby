@@ -32,10 +32,8 @@ class Notifier @Inject constructor(@ApplicationContext private val context: Cont
     fun showOverdue(kind: EventKind, plannedAt: LocalDateTime, eventId: String, safetyBreached: Boolean) {
         // REMOVE/SWAP overdue means the ring stays in too long; INSERT overdue means the break runs too long.
         val safety = if (kind == EventKind.INSERT) R.string.notif_overdue_safety_pause else R.string.notif_overdue_safety_wear
-        val text = buildString {
-            append(context.getString(R.string.notif_overdue_body, formatDateTime(plannedAt)))
-            if (safetyBreached) append("\n").append(context.getString(safety))
-        }
+        val body = context.getString(R.string.notif_overdue_body, formatDateTime(plannedAt))
+        val text = if (safetyBreached) context.getString(R.string.notif_overdue_body_with_safety, body, context.getString(safety)) else body
         val builder = NotificationCompat.Builder(context, Channels.URGENT)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(context.getString(R.string.notif_overdue_title, kindLabel(kind)))

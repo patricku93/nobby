@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobby.ring.R
+import com.nobby.ring.ui.components.plural
 import com.nobby.ring.data.prefs.OverdueConfigStore
 import com.nobby.ring.domain.model.Importance
 import com.nobby.ring.domain.model.ReminderRule
@@ -63,10 +64,14 @@ fun RemindersScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewM
     ) { padding ->
         LazyColumn(Modifier.padding(padding)) {
             items(rules, key = { it.id }) { rule ->
-                val off = if (rule.enabled) "" else " · " + stringResource(R.string.reminder_disabled)
+                val meta = stringResource(
+                    if (rule.enabled) R.string.reminder_row_meta else R.string.reminder_row_meta_off,
+                    targetText(rule.target),
+                    rule.importance.label(),
+                )
                 ListItem(
                     headlineContent = { Text(ruleText(rule)) },
-                    supportingContent = { Text("${targetText(rule.target)} · ${rule.importance.label()}$off") },
+                    supportingContent = { Text(meta) },
                     trailingContent = { IconButton(onClick = { viewModel.deleteRule(rule.id) }) { Icon(Icons.Default.Delete, stringResource(R.string.action_delete)) } },
                     modifier = Modifier.clickable { editing = rule },
                 )
@@ -93,9 +98,9 @@ fun RemindersScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewM
 
 @Composable
 private fun ruleText(rule: ReminderRule): String = when {
-    rule.offsetHours != null -> stringResource(R.string.reminder_hours_before, rule.offsetHours)
+    rule.offsetHours != null -> plural(R.plurals.reminder_hours_before, rule.offsetHours, rule.offsetHours)
     rule.offsetDays == 0 -> stringResource(R.string.reminder_same_day, formatTime(rule.timeOfDay ?: LocalTime(20, 0)))
-    else -> stringResource(R.string.reminder_day_before, rule.offsetDays, formatTime(rule.timeOfDay ?: LocalTime(20, 0)))
+    else -> plural(R.plurals.reminder_day_before, rule.offsetDays, rule.offsetDays, formatTime(rule.timeOfDay ?: LocalTime(20, 0)))
 }
 
 @Composable

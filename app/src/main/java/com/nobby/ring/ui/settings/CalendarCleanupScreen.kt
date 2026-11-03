@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobby.ring.R
+import com.nobby.ring.ui.components.plural
 import com.nobby.ring.ui.components.DatePickerField
 import com.nobby.ring.ui.components.formatDateTime
 import kotlinx.datetime.Instant
@@ -78,7 +79,7 @@ fun CalendarCleanupScreen(onBack: () -> Unit, viewModel: CalendarSettingsViewMod
     if (confirming) {
         AlertDialog(
             onDismissRequest = { confirming = false },
-            title = { Text(stringResource(R.string.cleanup_confirm_title, ui.selectedResults.size)) },
+            title = { Text(plural(R.plurals.cleanup_confirm_title, ui.selectedResults.size, ui.selectedResults.size)) },
             text = { Text(stringResource(R.string.cleanup_confirm_body)) },
             confirmButton = {
                 TextButton(onClick = { confirming = false; viewModel.deleteSelected() }) { Text(stringResource(R.string.action_delete)) }

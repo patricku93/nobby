@@ -71,7 +71,7 @@ fun ScheduleSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hi
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(stringResource(R.string.schedule_preview_title), style = MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.schedule_preview_body))
-                    d.preview.forEach { e -> Text("• ${e.kind.label()} — ${formatDateTime(e.plannedAt)}") }
+                    d.preview.forEach { e -> Text(stringResource(R.string.schedule_preview_row, e.kind.label(), formatDateTime(e.plannedAt))) }
                 }
             }
             Button(onClick = { viewModel.applyDraft(); onBack() }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.schedule_apply)) }

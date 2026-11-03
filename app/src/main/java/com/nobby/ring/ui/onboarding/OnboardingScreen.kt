@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobby.ring.R
+import com.nobby.ring.ui.components.plural
 import com.nobby.ring.domain.model.Palette
 import com.nobby.ring.domain.model.ReminderRule
 import com.nobby.ring.domain.model.ScheduleConfig
@@ -120,8 +121,8 @@ private fun RemindersStep(state: OnboardingState) {
         Text(stringResource(R.string.onb_reminders_title), style = MaterialTheme.typography.headlineMedium)
         ReminderRule.defaults(state.timeOfDay).forEach { rule ->
             val text = if (rule.offsetDays == 0) stringResource(R.string.reminder_same_day, formatTime(rule.timeOfDay!!))
-            else stringResource(R.string.reminder_day_before, rule.offsetDays, formatTime(rule.timeOfDay!!))
-            Text("• $text (${rule.importance.label()})")
+            else plural(R.plurals.reminder_day_before, rule.offsetDays, rule.offsetDays, formatTime(rule.timeOfDay!!))
+            Text(stringResource(R.string.onb_reminder_line, text, rule.importance.label()))
         }
         Text(stringResource(R.string.onb_reminders_body), style = MaterialTheme.typography.bodyMedium)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -147,6 +148,6 @@ private fun LookStep(state: OnboardingState, vm: OnboardingViewModel) {
                 )
             }
         }
-        Text(stringResource(R.string.onb_calendar_connect) + " → " + stringResource(R.string.nav_settings), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.onb_calendar_hint), style = MaterialTheme.typography.bodyMedium)
     }
 }

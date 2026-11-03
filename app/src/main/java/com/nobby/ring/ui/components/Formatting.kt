@@ -1,6 +1,7 @@
 package com.nobby.ring.ui.components
 
 import android.content.res.Resources
+import androidx.annotation.PluralsRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -64,14 +65,21 @@ fun formatDuration(d: Duration): String {
     return formatDuration(d, LocalContext.current.resources)
 }
 
+/** Quantity string for composables; recomposes on configuration (locale) changes. */
+@Composable
+fun plural(@PluralsRes id: Int, count: Int, vararg args: Any): String {
+    LocalConfiguration.current
+    return LocalContext.current.resources.getQuantityString(id, count, *args)
+}
+
 /** Localised duration for non-UI callers. */
 fun formatDuration(d: Duration, res: Resources): String {
-    val days = d.inWholeDays
-    val hours = d.inWholeHours % 24
+    val days = d.inWholeDays.toInt()
+    val hours = (d.inWholeHours % 24).toInt()
     val minutes = d.inWholeMinutes % 60
     return buildList {
-        if (days > 0) add(res.getString(R.string.duration_days, days))
-        if (hours > 0) add(res.getString(R.string.duration_hours, hours))
-        if (days == 0L && minutes > 0) add(res.getString(R.string.duration_minutes, minutes))
+        if (days > 0) add(res.getQuantityString(R.plurals.duration_days, days, days))
+        if (hours > 0) add(res.getQuantityString(R.plurals.duration_hours, hours, hours))
+        if (days == 0 && minutes > 0) add(res.getString(R.string.duration_minutes, minutes))
     }.joinToString(" ").ifEmpty { res.getString(R.string.duration_minutes, 0L) }
 }

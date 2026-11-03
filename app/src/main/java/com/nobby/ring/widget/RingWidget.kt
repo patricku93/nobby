@@ -80,9 +80,9 @@ class RingWidget : GlanceAppWidget() {
             overdue = context.getString(R.string.widget_row_overdue),
             cycleDay = context.getString(R.string.widget_row_cycle_day),
             none = context.getString(R.string.widget_none),
-            inDays = { context.getString(R.string.widget_in_days, it) },
-            overdueDays = { context.getString(R.string.widget_overdue_days, it) },
-            overdueHours = { context.getString(R.string.widget_overdue_hours, it) },
+            inDays = { context.resources.getQuantityString(R.plurals.widget_in_days, it, it) },
+            overdueDays = { context.resources.getQuantityString(R.plurals.widget_overdue_days, it, it) },
+            overdueHours = { context.resources.getQuantityString(R.plurals.widget_overdue_hours, it, it) },
             cycleDayFmt = { d, n -> context.getString(R.string.cycle_day, d, n) },
             kindLabel = { k ->
                 context.getString(

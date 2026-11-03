@@ -2,74 +2,165 @@
 <resources>
     <string name="app_name">NoBby</string>
 
-    <!-- navigation -->
+    <!-- navigation + actions -->
     <string name="nav_home">Status</string>
     <string name="nav_calendar">Calendar</string>
     <string name="nav_history">History</string>
     <string name="nav_settings">Settings</string>
     <string name="action_back">Back</string>
     <string name="action_next">Next</string>
-    <string name="action_skip">Skip</string>
     <string name="action_done">Done</string>
     <string name="action_save">Save</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_delete">Delete</string>
-    <string name="action_finish">Finish</string>
+    <string name="action_finish">Let\'s go</string>
+    <string name="action_allow">Allow</string>
+    <string name="action_close">Close</string>
+    <string name="stepper_minus">Less</string>
+    <string name="stepper_plus">More</string>
 
-    <!-- events -->
+    <!-- events + phases -->
     <string name="event_remove">Remove ring</string>
-    <string name="event_insert">Insert new ring</string>
+    <string name="event_insert">Insert ring</string>
     <string name="event_swap">Swap ring</string>
+    <string name="event_remove_short">Ring out</string>
+    <string name="event_insert_short">Ring in</string>
+    <string name="event_swap_short">Ring swap</string>
     <string name="phase_wear">Ring in</string>
-    <string name="phase_pause">Ring-free break</string>
+    <string name="phase_pause">Break</string>
     <string name="cycle_day">Day %1$d of %2$d</string>
     <string name="phase_day">%1$s · day %2$d of %3$d</string>
+    <plurals name="phase_over_days">
+        <item quantity="one">%1$s · %2$d day over</item>
+        <item quantity="other">%1$s · %2$d days over</item>
+    </plurals>
+    <plurals name="phase_over_hours">
+        <item quantity="one">%1$s · %2$d h over</item>
+        <item quantity="other">%1$s · %2$d h over</item>
+    </plurals>
 
-    <!-- home -->
-    <string name="home_days_remaining">days remaining</string>
-    <string name="home_day_remaining">day remaining</string>
-    <string name="home_today">today</string>
-    <string name="home_overdue_days">days overdue</string>
-    <string name="home_next_on">%1$s on %2$s</string>
-    <string name="home_mark_done">Done ✓</string>
+    <!-- home: ring -->
+    <plurals name="ring_until_remove">
+        <item quantity="one">day until removal</item>
+        <item quantity="other">days until removal</item>
+    </plurals>
+    <plurals name="ring_until_insert">
+        <item quantity="one">day until insertion</item>
+        <item quantity="other">days until insertion</item>
+    </plurals>
+    <plurals name="ring_until_swap">
+        <item quantity="one">day until swap</item>
+        <item quantity="other">days until swap</item>
+    </plurals>
+    <plurals name="ring_overdue_days">
+        <item quantity="one">day overdue</item>
+        <item quantity="other">days overdue</item>
+    </plurals>
+    <plurals name="ring_overdue_hours">
+        <item quantity="one">hour overdue</item>
+        <item quantity="other">hours overdue</item>
+    </plurals>
+    <string name="ring_today">Today</string>
+    <string name="ring_at_time">at %1$s</string>
+    <string name="ring_since">since %1$s</string>
+    <string name="ring_check_protection">Check protection</string>
+
+    <!-- home: cards -->
+    <plurals name="home_next_in_days">
+        <item quantity="one">%1$s · in %2$d day</item>
+        <item quantity="other">%1$s · in %2$d days</item>
+    </plurals>
+    <string name="home_due_today">Today: %1$s at %2$s</string>
+    <plurals name="card_overdue_days">
+        <item quantity="one">%1$d day overdue</item>
+        <item quantity="other">%1$d days overdue</item>
+    </plurals>
+    <plurals name="card_overdue_hours">
+        <item quantity="one">%1$d hour overdue</item>
+        <item quantity="other">%1$d hours overdue</item>
+    </plurals>
+    <string name="home_mark_done">Done</string>
     <string name="home_skip_pause">Skip break</string>
-    <string name="home_skip_pause_cancel">Undo skip break</string>
-    <string name="home_overdue_title">Overdue: %1$s</string>
-    <string name="home_overdue_body">Planned for %1$s. Confirm as soon as you have done it.</string>
+    <string name="home_skip_pause_cancel">Keep the break</string>
+    <string name="home_snooze">Snooze</string>
+    <string name="home_overdue_body">Planned for %1$s. Tap Done as soon as you have.</string>
     <string name="home_overdue_safety_wear">The ring has been in for more than 28 days. Protection may be reduced — check your product leaflet; you may need backup contraception. Ask your doctor or pharmacist.</string>
     <string name="home_overdue_safety_pause">The ring-free break is longer than 7 days. Protection may be reduced — check your product leaflet; you may need backup contraception. Ask your doctor or pharmacist.</string>
-    <string name="home_snooze">Snooze</string>
+    <!-- legacy v1 Home, removed in Task 9 -->
+    <string name="home_days_remaining">days to go</string>
+    <string name="home_day_remaining">day to go</string>
+    <string name="home_today">today</string>
+    <string name="home_overdue_days">days overdue</string>
+    <string name="home_overdue_title">Overdue: %1$s</string>
+
+    <!-- confirm -->
     <string name="confirm_title">You were late</string>
-    <string name="confirm_body">This was planned for %1$s. Should the following dates move by %2$s, or stay as planned?</string>
+    <string name="confirm_body">This was planned for %1$s. Move the next dates by %2$s, or keep them?</string>
     <string name="confirm_title_early">You were early</string>
-    <string name="confirm_body_early">This was planned for %1$s. The following dates will be adjusted so your break stays within the limit.</string>
-    <string name="confirm_shift">Shift dates</string>
-    <string name="confirm_keep">Keep schedule</string>
+    <string name="confirm_body_early">This was planned for %1$s. NoBby adjusts the next dates so your break stays within the limit.</string>
+    <string name="confirm_shift">Move dates</string>
+    <string name="confirm_keep">Keep plan</string>
     <string name="confirm_when">When did you do it?</string>
-    <string name="confirm_now">Now</string>
+
+    <!-- done sheet -->
+    <string name="done_title_remove">Yay, ring\'s out!</string>
+    <string name="done_title_insert">Yay, ring\'s in!</string>
+    <string name="done_title_swap">Yay, new ring\'s in!</string>
+    <string name="done_lead">Done! Nice one 💗</string>
+    <string name="done_next">%1$s · %2$s · I\'ll remind you</string>
+    <string name="done_autoclose">Closes by itself</string>
+
+    <!-- permissions -->
+    <string name="exact_alarm_warning">Exact alarms are off. Reminders may be late.</string>
+    <string name="notifications_disabled_warning">Notifications are off. Reminders won\'t show.</string>
 
     <!-- onboarding -->
-    <string name="onb_welcome_title">Hi, I\'m NoBby</string>
-    <string name="onb_welcome_body">I remind you when to remove and insert your ring, keep your calendar in sync and nag you if you forget.</string>
-    <string name="onb_schedule_title">Your cycle</string>
-    <string name="onb_wear_days">Ring in for (days)</string>
+    <string name="onb_step_first">Hi! · Step %1$d of %2$d</string>
+    <string name="onb_step">Step %1$d of %2$d</string>
+    <string name="onb_rhythm_title">Your rhythm</string>
+    <string name="onb_rhythm_body">How long does the ring stay in, how long is your break? You can change this later.</string>
+    <string name="onb_wear_days">Ring in (days)</string>
+    <string name="onb_wear_hint">usually 21</string>
     <string name="onb_pause_days">Break (days)</string>
-    <string name="onb_time_of_day">Time of day</string>
-    <string name="onb_safety_wear">More than 28 days of wear may reduce protection.</string>
-    <string name="onb_safety_pause">A break longer than 7 days may reduce protection.</string>
+    <string name="onb_pause_hint">0 = continuous</string>
+    <string name="onb_time_of_day">Time for out and in</string>
+    <string name="onb_safety_hint">Per the leaflet: more than 28 days of wear or a break longer than 7 days can reduce protection. NoBby warns you then.</string>
+    <string name="onb_safety_wear">More than 28 days of wear can reduce protection.</string>
+    <string name="onb_safety_pause">A break longer than 7 days can reduce protection.</string>
+    <string name="onb_where_title">Where are you now?</string>
+    <string name="onb_where_body">When did you last insert the ring? NoBby works out everything else from that.</string>
     <string name="onb_anchor_title">When did the current ring go in?</string>
+    <string name="onb_anchor_date_label">Inserted on</string>
     <string name="onb_anchor_date">Date</string>
     <string name="onb_anchor_time">Time</string>
-    <string name="onb_reminders_title">Reminders</string>
-    <string name="onb_reminders_body">You can change these any time in Settings.</string>
-    <string name="onb_notifications_permission">Allow notifications</string>
+    <string name="onb_reminders_title">I\'ll let you know</string>
+    <string name="onb_reminders_body">When should NoBby remind you? You can change it all later.</string>
+    <string name="onb_reminder_line">%1$s (%2$s)</string>
+    <plurals name="onb_overdue_line">
+        <item quantity="one">If overdue: every hour until you tap Done</item>
+        <item quantity="other">If overdue: every %1$d hours until you tap Done</item>
+    </plurals>
+    <string name="onb_permission_body">To ring on time, I need notifications.</string>
     <string name="onb_look_title">Make it yours</string>
+    <string name="onb_look_body">Pick a colour. The break always stays easy to spot.</string>
+    <string name="onb_calendar_hint">You can turn on calendar sync later in Settings.</string>
     <string name="onb_calendar_connect">Connect a calendar</string>
+    <!-- legacy v1 onboarding, removed in Task 13 -->
+    <string name="onb_welcome_title">Hi, I\'m NoBby</string>
+    <string name="onb_welcome_body">I remind you when the ring goes out and in, keep your calendar up to date and nudge you if you forget.</string>
+    <string name="onb_schedule_title">Your rhythm</string>
+    <string name="onb_notifications_permission">Allow notifications</string>
 
     <!-- reminders -->
-    <string name="reminder_day_before">%1$d day(s) before at %2$s</string>
+    <plurals name="reminder_day_before">
+        <item quantity="one">%1$d day before at %2$s</item>
+        <item quantity="other">%1$d days before at %2$s</item>
+    </plurals>
     <string name="reminder_same_day">Same day at %1$s</string>
-    <string name="reminder_hours_before">%1$d hour(s) before</string>
+    <plurals name="reminder_hours_before">
+        <item quantity="one">%1$d hour before</item>
+        <item quantity="other">%1$d hours before</item>
+    </plurals>
     <string name="reminder_target_any">All events</string>
     <string name="reminder_target_remove">Removal only</string>
     <string name="reminder_target_insert">Insertion only</string>
@@ -81,12 +172,11 @@
     <string name="reminder_edit">Edit reminder</string>
     <string name="reminder_mode_days">Days before</string>
     <string name="reminder_mode_hours">Hours before</string>
-    <string name="reminder_enabled">Enabled</string>
-    <string name="overdue_repeat">Repeat overdue alert every (hours)</string>
-    <string name="overdue_snooze">Snooze length (hours)</string>
-    <string name="reminder_disabled">off</string>
-    <string name="exact_alarm_warning">Exact alarms are disabled. Reminders may be delayed. Tap to allow.</string>
-    <string name="notifications_disabled_warning">Notifications are off. Reminders will not appear. Tap to enable.</string>
+    <string name="reminder_enabled">On</string>
+    <string name="reminder_row_meta">%1$s · %2$s</string>
+    <string name="reminder_row_meta_off">%1$s · %2$s · off</string>
+    <string name="overdue_repeat">If overdue: remind every (hours)</string>
+    <string name="overdue_snooze">Snooze means (hours)</string>
 
     <!-- notifications -->
     <string name="channel_low">Quiet reminders</string>
@@ -96,38 +186,71 @@
     <string name="notif_reminder_title">%1$s</string>
     <string name="notif_reminder_body">Planned for %1$s</string>
     <string name="notif_overdue_title">Overdue: %1$s</string>
-    <string name="notif_overdue_body">Planned for %1$s. Tap Done once you have done it.</string>
+    <string name="notif_overdue_body">Planned for %1$s. Tap Done once you have.</string>
+    <string name="notif_overdue_body_with_safety">%1$s\n%2$s</string>
     <string name="notif_overdue_safety_wear">The ring has been in for more than 28 days. Protection may be reduced — check your product leaflet; you may need backup contraception. Ask your doctor or pharmacist.</string>
     <string name="notif_overdue_safety_pause">The ring-free break is longer than 7 days. Protection may be reduced — check your product leaflet; you may need backup contraception. Ask your doctor or pharmacist.</string>
     <string name="notif_overdue_safety_short">Protection may be reduced</string>
 
     <!-- calendar -->
-    <string name="calendar_notes_title">Notes – %1$s</string>
-    <string name="calendar_notes_hint">Write here</string>
+    <string name="calendar_today">Today</string>
+    <string name="calendar_month_title">%1$s %2$d</string>
     <string name="calendar_prev_month">Previous month</string>
     <string name="calendar_next_month">Next month</string>
+    <string name="legend_wear">Ring in</string>
+    <string name="legend_pause">Break</string>
+    <string name="legend_event">Out / in</string>
+    <string name="legend_note">Note</string>
+    <string name="calendar_note_label">Note</string>
+    <string name="calendar_notes_hint">Write something…</string>
+    <string name="calendar_note_empty">No note for this day yet.</string>
+    <string name="calendar_cell_a11y">%1$s, %2$s</string>
+    <!-- legacy v1 calendar, removed in Task 10 -->
+    <string name="calendar_notes_title">Note – %1$s</string>
 
     <!-- history -->
-    <string name="history_empty">No confirmed events yet.</string>
+    <string name="history_empty_title">Nothing here yet</string>
+    <string name="history_empty_body">Once you tap Done, it shows up here.</string>
+    <string name="history_removed">Ring removed</string>
+    <string name="history_inserted">Ring inserted</string>
+    <string name="history_swapped">Ring swapped</string>
+    <string name="history_row_meta">%1$s · planned %2$s</string>
     <string name="history_on_time">on time</string>
     <string name="history_late">%1$s late</string>
     <string name="history_early">%1$s early</string>
+    <!-- legacy v1 history, removed in Task 11 -->
+    <string name="history_empty">Nothing here yet.</string>
 
     <!-- settings -->
+    <string name="settings_group_ring">Ring</string>
+    <string name="settings_group_look">Look</string>
+    <string name="settings_group_more">More</string>
     <string name="settings_schedule">Cycle &amp; schedule</string>
+    <string name="settings_schedule_summary">%1$d + %2$d days · %3$s</string>
     <string name="settings_reminders">Reminders</string>
-    <string name="settings_appearance">Appearance</string>
+    <plurals name="settings_reminders_summary">
+        <item quantity="one">%1$d active</item>
+        <item quantity="other">%1$d active</item>
+    </plurals>
+    <string name="settings_overdue">When overdue</string>
+    <string name="settings_overdue_summary">every %1$d h · snooze %2$d h</string>
+    <string name="settings_appearance">Colour &amp; mode</string>
+    <string name="settings_appearance_summary">%1$s · %2$s</string>
     <string name="settings_calendar">Calendar sync</string>
     <string name="settings_widget">Widget</string>
-    <string name="settings_about">About</string>
-    <string name="settings_about_body">NoBby %1$s · This app is a reminder tool, not medical advice. Follow your product leaflet and your doctor.</string>
-    <string name="schedule_preview_title">New schedule preview</string>
-    <string name="schedule_preview_body">The next dates will be:</string>
+    <string name="settings_about">About NoBby</string>
+    <string name="settings_about_version">Version %1$s</string>
+    <string name="settings_about_body">NoBby is a reminder tool, not medical advice. Follow your product leaflet and ask your doctor or pharmacist when in doubt.</string>
+    <string name="settings_licenses">Font licences (OFL)</string>
+    <string name="schedule_preview_title">Preview</string>
+    <string name="schedule_preview_body">This is what your next dates look like:</string>
+    <string name="schedule_preview_row">%1$s — %2$s</string>
     <string name="schedule_apply">Apply and update calendar</string>
     <string name="schedule_horizon">Plan ahead (months)</string>
     <string name="appearance_palette">Colour</string>
     <string name="appearance_mode">Mode</string>
-    <string name="mode_system">System</string>
+    <string name="appearance_preview">Preview</string>
+    <string name="mode_system">Auto</string>
     <string name="mode_light">Light</string>
     <string name="mode_dark">Dark</string>
     <string name="palette_berry">Berry</string>
@@ -135,11 +258,13 @@
     <string name="palette_peach">Peach</string>
     <string name="palette_matcha">Matcha</string>
     <string name="palette_blueberry">Blueberry</string>
-    <string name="calendar_sync_enable">Sync to a calendar</string>
+
+    <!-- calendar sync -->
+    <string name="calendar_sync_enable">Add to my calendar</string>
     <string name="calendar_sync_choose">Choose calendar</string>
-    <string name="calendar_sync_permission">Calendar permission is needed to sync.</string>
+    <string name="calendar_sync_permission">NoBby needs calendar access to sync.</string>
     <string name="calendar_sync_now">Sync now</string>
-    <string name="calendar_sync_last">Last sync: %1$s</string>
+    <string name="calendar_sync_last">Last synced: %1$s</string>
     <string name="calendar_cleanup">Clean up old entries</string>
     <string name="cleanup_query">Title contains / regex</string>
     <string name="cleanup_from">From</string>
@@ -147,25 +272,48 @@
     <string name="cleanup_search">Search</string>
     <string name="cleanup_delete_selected">Delete selected (%1$d)</string>
     <string name="cleanup_none">No matching entries.</string>
-    <string name="cleanup_delete_failed">Some entries could not be deleted.</string>
+    <string name="cleanup_delete_failed">A few entries could not be deleted.</string>
     <string name="cleanup_select_all">Select all</string>
-    <string name="cleanup_confirm_title">Delete %1$d entries?</string>
-    <string name="cleanup_confirm_body">This removes them from your calendar. It cannot be undone.</string>
+    <plurals name="cleanup_confirm_title">
+        <item quantity="one">Delete %1$d entry?</item>
+        <item quantity="other">Delete %1$d entries?</item>
+    </plurals>
+    <string name="cleanup_confirm_body">This removes them from your calendar. There is no undo.</string>
+
+    <!-- widget -->
     <string name="widget_mode">Layout</string>
     <string name="widget_mode_single">One big countdown</string>
     <string name="widget_mode_multi">Up to three rows</string>
     <string name="widget_rows">Rows</string>
-    <string name="widget_row_next_any">Next action</string>
+    <string name="widget_row_next_any">Next step</string>
     <string name="widget_row_next_remove">Next removal</string>
     <string name="widget_row_next_insert">Next insertion</string>
     <string name="widget_row_overdue">Overdue</string>
     <string name="widget_row_cycle_day">Cycle day</string>
-    <string name="widget_description">Countdown to your next ring action</string>
+    <string name="widget_description">Countdown to your next ring step</string>
     <string name="widget_none">All done</string>
-    <string name="widget_in_days">in %1$d d</string>
-    <string name="widget_overdue_days">%1$d d overdue</string>
-    <string name="widget_overdue_hours">%1$d h overdue</string>
-    <string name="duration_days">%1$dd</string>
-    <string name="duration_hours">%1$dh</string>
-    <string name="duration_minutes">%1$dmin</string>
+    <string name="widget_day_of">Day %1$d/%2$d</string>
+    <plurals name="widget_in_days">
+        <item quantity="one">in %1$d day</item>
+        <item quantity="other">in %1$d days</item>
+    </plurals>
+    <plurals name="widget_overdue_days">
+        <item quantity="one">%1$d day over</item>
+        <item quantity="other">%1$d days over</item>
+    </plurals>
+    <plurals name="widget_overdue_hours">
+        <item quantity="one">%1$d h over</item>
+        <item quantity="other">%1$d h over</item>
+    </plurals>
+
+    <!-- durations -->
+    <plurals name="duration_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <plurals name="duration_hours">
+        <item quantity="one">%1$d h</item>
+        <item quantity="other">%1$d h</item>
+    </plurals>
+    <string name="duration_minutes">%1$d min</string>
 </resources>
