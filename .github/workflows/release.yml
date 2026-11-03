@@ -1,18 +1,20 @@
 name: Release APK
 
+# Tags only: push vMAJOR.MINOR.PATCH (major >= 1, minor and patch 0-99, no leading zeros).
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-java@v4
         with:
@@ -25,20 +27,32 @@ jobs:
         id: version
         run: |
           TAG="${GITHUB_REF_NAME#v}"
-          if ! [[ "$TAG" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            echo "Tag must look like v1.2.3, got '$GITHUB_REF_NAME'" >&2
+          if ! [[ "$TAG" =~ ^([1-9][0-9]*)\.(0|[1-9][0-9]?)\.(0|[1-9][0-9]?)$ ]]; then
+            echo "Tag must look like v1.2.3 (major >= 1, minor and patch 0-99, no leading zeros), got '$GITHUB_REF_NAME'" >&2
             exit 1
           fi
           CODE=$(( BASH_REMATCH[1] * 10000 + BASH_REMATCH[2] * 100 + BASH_REMATCH[3] ))
           echo "name=$TAG" >> "$GITHUB_OUTPUT"
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
 
+      - name: Check signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.NOBBY_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.NOBBY_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.NOBBY_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.NOBBY_KEY_PASSWORD }}
+        run: |
+          missing=0
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then echo "Secret NOBBY_$name is missing or empty" >&2; missing=1; fi
+          done
+          exit $missing
+
       - name: Restore signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.NOBBY_KEYSTORE_BASE64 }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then echo "NOBBY_KEYSTORE_BASE64 secret missing" >&2; exit 1; fi
-          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/nobby-release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/nobby-release.jks"
 
       - name: Test and build signed APK
         env:
@@ -51,11 +65,32 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest :app:assembleRelease --console=plain
-          cp app/build/outputs/apk/release/app-release.apk NoBby.apk
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/NoBby.apk"
+
+      - name: Remove signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/nobby-release.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NoBby-apk
+          path: ${{ runner.temp }}/NoBby.apk
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: NoBby-apk
 
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          name: NoBby ${{ steps.version.outputs.name }}
+          name: NoBby ${{ github.ref_name }}
           files: NoBby.apk
           generate_release_notes: true
