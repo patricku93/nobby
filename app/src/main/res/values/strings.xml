@@ -131,7 +131,7 @@
     <string name="onb_status_new">Not started yet</string>
     <string name="onb_status_in_question">When did you insert it?</string>
     <string name="onb_status_out_question">When did you take it out?</string>
-    <string name="onb_status_new_question">When will you insert the first ring?</string>
+    <string name="onb_status_new_question">When will you insert the new ring?</string>
     <string name="onb_status_pause_over">Your break is already over – when will you insert the new ring?</string>
     <string name="onb_status_in_future">That\'s in the future. Pick a time up to now.</string>
     <string name="onb_status_in_past">That\'s in the past. Pick now or later.</string>

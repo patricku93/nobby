@@ -83,7 +83,7 @@ class OnboardingContentTest {
         state.value = base.copy(status = SetupStatus.RING_OUT)
         compose.onNodeWithText("When did you take it out?").assertExists()
         state.value = base.copy(status = SetupStatus.NOT_STARTED)
-        compose.onNodeWithText("When will you insert the first ring?").assertExists()
+        compose.onNodeWithText("When will you insert the new ring?").assertExists()
         compose.onNodeWithText("Next").assertIsEnabled().performClick()
         assertEquals(1, next)
     }
@@ -99,7 +99,7 @@ class OnboardingContentTest {
     fun `a break that is already over says so and asks for the insertion`() {
         show(base.copy(status = SetupStatus.NOT_STARTED, pauseOver = true))
         compose.onNodeWithText("Your break is already over – when will you insert the new ring?").assertExists()
-        compose.onNodeWithText("When will you insert the first ring?").performScrollTo().assertExists()
+        compose.onNodeWithText("When will you insert the new ring?").performScrollTo().assertExists()
     }
 
     @Test

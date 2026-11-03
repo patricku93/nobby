@@ -131,7 +131,7 @@
     <string name="onb_status_new">Noch nicht gestartet</string>
     <string name="onb_status_in_question">Wann hast du ihn eingesetzt?</string>
     <string name="onb_status_out_question">Wann hast du ihn rausgenommen?</string>
-    <string name="onb_status_new_question">Wann setzt du den ersten Ring ein?</string>
+    <string name="onb_status_new_question">Wann setzt du den neuen Ring ein?</string>
     <string name="onb_status_pause_over">Deine Pause ist schon vorbei – wann setzt du den neuen Ring ein?</string>
     <string name="onb_status_in_future">Das liegt in der Zukunft. Wähl einen Zeitpunkt bis jetzt.</string>
     <string name="onb_status_in_past">Das liegt in der Vergangenheit. Wähl jetzt oder später.</string>
