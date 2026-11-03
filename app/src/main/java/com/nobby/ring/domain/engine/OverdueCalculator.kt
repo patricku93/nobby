@@ -33,7 +33,8 @@ object OverdueCalculator {
         val delay = between(pending.plannedAt, now)
         val breached = when (pending.kind) {
             EventKind.REMOVE, EventKind.SWAP -> between(pending.cycleStart, now) > ScheduleConfig.SAFE_MAX_WEAR.days + grace
-            EventKind.INSERT -> {
+            // The very first ring (not started yet) ends no break, so there is no pause to exceed.
+            EventKind.INSERT -> pending.cycleIndex != ScheduleEngine.FIRST_INSERT_CYCLE && run {
                 // By id, the same rule as CycleCalculator / nextPending (D9): a removal carried by Settings > Apply
                 // keeps its original plannedAt, which can lie before this cycle's start.
                 val removeId = events.firstOrNull { it.kind == EventKind.REMOVE && it.cycleIndex == pending.cycleIndex }?.id

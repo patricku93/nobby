@@ -71,7 +71,7 @@ object ConfirmAction {
             else -> event.plannedAt
         }
         return ConfirmResult(
-            config.copy(anchor = anchor, skipPauseOnce = false),
+            config.copy(anchor = anchor, skipPauseOnce = false, firstInsertPending = false),
             logs + EventLog(event.id, event.kind, event.plannedAt, confirmedAt),
         )
     }

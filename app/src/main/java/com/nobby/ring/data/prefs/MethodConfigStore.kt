@@ -23,6 +23,7 @@ class MethodConfigStore @Inject constructor(private val dataStore: DataStore<Pre
         val anchor = stringPreferencesKey("anchor")
         val horizon = intPreferencesKey("horizon_months")
         val skipPause = booleanPreferencesKey("skip_pause_once")
+        val firstInsertPending = booleanPreferencesKey("first_insert_pending")
         val onboardingDone = booleanPreferencesKey("onboarding_done")
     }
 
@@ -40,6 +41,7 @@ class MethodConfigStore @Inject constructor(private val dataStore: DataStore<Pre
             anchor = anchor,
             horizonMonths = (p[Keys.horizon] ?: 12).coerceIn(ScheduleConfig.MIN_HORIZON, ScheduleConfig.MAX_HORIZON),
             skipPauseOnce = p[Keys.skipPause] ?: false,
+            firstInsertPending = p[Keys.firstInsertPending] ?: false,
         )
     }
 
@@ -54,6 +56,7 @@ class MethodConfigStore @Inject constructor(private val dataStore: DataStore<Pre
             p[Keys.anchor] = config.anchor.toString()
             p[Keys.horizon] = config.horizonMonths
             p[Keys.skipPause] = config.skipPauseOnce
+            p[Keys.firstInsertPending] = config.firstInsertPending
         }
     }
 

@@ -43,11 +43,13 @@ data class ScheduleDraft(
     val horizonMonths: Int,
     /** Not edited on this screen; carried through so Apply does not cancel a pending skip-pause. */
     val skipPauseOnce: Boolean = false,
+    /** Not edited here either: a schedule waiting for its first ring keeps waiting after Apply. */
+    val firstInsertPending: Boolean = false,
     /** The saved schedule and log the draft started from, so the preview shows what Apply saves (carried removal). */
     val base: ScheduleConfig? = null,
     val logs: List<EventLog> = emptyList(),
 ) {
-    fun toConfig(): ScheduleConfig = ScheduleConfig(Method.ring(wearDays, pauseDays, timeOfDay), anchor, horizonMonths, skipPauseOnce)
+    fun toConfig(): ScheduleConfig = ScheduleConfig(Method.ring(wearDays, pauseDays, timeOfDay), anchor, horizonMonths, skipPauseOnce, firstInsertPending)
     val preview: List<ScheduledEvent> get() = ScheduleEngine.generate(ConfigChange.resolve(base, toConfig(), logs)).take(4)
     val wearWarning: Boolean get() = wearDays > ScheduleConfig.SAFE_MAX_WEAR
     val pauseWarning: Boolean get() = pauseDays > ScheduleConfig.SAFE_MAX_PAUSE
@@ -55,7 +57,7 @@ data class ScheduleDraft(
     companion object {
         fun from(config: ScheduleConfig, logs: List<EventLog> = emptyList()) = ScheduleDraft(
             config.method.wearDays, config.method.pauseDays, config.method.timeOfDay, config.anchor, config.horizonMonths, config.skipPauseOnce,
-            base = config, logs = logs,
+            config.firstInsertPending, base = config, logs = logs,
         )
     }
 }

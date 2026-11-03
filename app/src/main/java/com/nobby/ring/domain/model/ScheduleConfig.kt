@@ -9,6 +9,11 @@ data class ScheduleConfig(
     val horizonMonths: Int = 12,
     /** One-off: the next REMOVE becomes a SWAP and the following cycle starts there. */
     val skipPauseOnce: Boolean = false,
+    /**
+     * "Not started yet": no ring is in. The schedule opens with a first INSERT at [anchor] (cycle index -1); the wear
+     * phase begins only when that insertion is confirmed, which clears the flag.
+     */
+    val firstInsertPending: Boolean = false,
 ) {
     init {
         require(method.wearDays in MIN_WEAR..MAX_WEAR) {

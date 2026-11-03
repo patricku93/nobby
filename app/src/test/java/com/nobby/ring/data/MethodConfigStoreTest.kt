@@ -9,12 +9,17 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.test.core.app.ApplicationProvider
 import com.nobby.ring.data.prefs.MethodConfigStore
+import com.nobby.ring.domain.model.Method
+import com.nobby.ring.domain.model.ScheduleConfig
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -55,5 +60,14 @@ class MethodConfigStoreTest {
     fun `unparseable anchor yields null config`() = runTest {
         dataStore.edit { it[stringPreferencesKey("anchor")] = "garbage" }
         assertNull(store.config.first())
+    }
+
+    @Test
+    fun `the pending first insertion survives a save and is off by default`() = runTest {
+        val method = Method.ring(21, 7, LocalTime(21, 0))
+        store.save(ScheduleConfig(method, LocalDateTime(2026, 11, 6, 21, 0), firstInsertPending = true))
+        assertTrue(store.config.first()!!.firstInsertPending)
+        store.save(ScheduleConfig(method, LocalDateTime(2026, 11, 6, 21, 0)))
+        assertFalse(store.config.first()!!.firstInsertPending)
     }
 }

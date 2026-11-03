@@ -14,6 +14,11 @@ object ScheduleEngine {
         val method = config.method
         val horizonEnd = config.anchor.date.plus(config.horizonMonths, DateTimeUnit.MONTH).atTime(config.anchor.time)
         val events = mutableListOf<ScheduledEvent>()
+        if (config.firstInsertPending) {
+            // Not started yet: the first ring goes in at the anchor. Cycle index -1 keeps every "cycleIndex == 0" lookup
+            // (the current cycle's REMOVE / INSERT) pointing at the cycle this insertion starts.
+            events += ScheduledEvent(firstInsertId(config), EventKind.INSERT, config.anchor, FIRST_INSERT_CYCLE, config.anchor)
+        }
         var cycleStart = config.anchor
         var cycleIndex = 0
         var skipPause = config.skipPauseOnce
@@ -39,4 +44,10 @@ object ScheduleEngine {
         }
         return events
     }
+
+    /** Cycle index of the first insertion of a schedule that has not started yet. */
+    const val FIRST_INSERT_CYCLE = -1
+
+    /** Id of the first insertion while [ScheduleConfig.firstInsertPending] is set. */
+    fun firstInsertId(config: ScheduleConfig): String = eventId(EventKind.INSERT, config.anchor)
 }

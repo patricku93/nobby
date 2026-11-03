@@ -1,0 +1,130 @@
+package com.nobby.ring.domain.engine
+
+import com.nobby.ring.domain.model.EventKind
+import com.nobby.ring.domain.model.Method
+import com.nobby.ring.domain.model.PhaseKind
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class SetupStartTest {
+    private val method = Method.ring(21, 7, LocalTime(21, 0))
+    private val now = LocalDateTime(2026, 11, 3, 10, 0, 30)
+
+    private fun ready(plan: SetupPlan) = plan as SetupPlan.Ready
+
+    /** What the repository ends up with: the plan's config, then the removal confirmed through ConfirmAction. */
+    private fun saved(plan: SetupPlan.Ready): ConfirmResult {
+        val r = plan.removal ?: return ConfirmResult(plan.config, emptyList())
+        val event = ScheduleEngine.generate(plan.config).first { it.id == r.eventId }
+        return ConfirmAction.confirm(plan.config, event, emptyList(), r.confirmedAt, r.policy)
+    }
+
+    @Test
+    fun `ring in anchors at the insertion`() {
+        val at = LocalDateTime(2026, 11, 1, 21, 0)
+        val plan = ready(SetupStart.plan(SetupStatus.RING_IN, method, at, now))
+        assertEquals(at, plan.config.anchor)
+        assertFalse(plan.config.firstInsertPending)
+        assertNull(plan.removal)
+    }
+
+    @Test
+    fun `ring in up to the current minute is accepted, later is rejected`() {
+        assertTrue(SetupStart.plan(SetupStatus.RING_IN, method, LocalDateTime(2026, 11, 3, 10, 0), now) is SetupPlan.Ready)
+        assertEquals(SetupPlan.InFuture, SetupStart.plan(SetupStatus.RING_IN, method, LocalDateTime(2026, 11, 3, 10, 1), now))
+    }
+
+    @Test
+    fun `ring in older than the wear days is still accepted`() {
+        val at = LocalDateTime(2026, 10, 1, 21, 0)
+        assertEquals(at, ready(SetupStart.plan(SetupStatus.RING_IN, method, at, now)).config.anchor)
+    }
+
+    @Test
+    fun `ring out anchors wear days before the removal and confirms that cycle's removal`() {
+        val removedAt = LocalDateTime(2026, 11, 1, 21, 0)
+        val plan = ready(SetupStart.plan(SetupStatus.RING_OUT, method, removedAt, now))
+        assertEquals(LocalDateTime(2026, 10, 11, 21, 0), plan.config.anchor)
+        assertEquals(CycleCalculator.currentRemoveId(plan.config), plan.removal!!.eventId)
+        assertEquals(removedAt, plan.removal!!.confirmedAt)
+
+        val result = saved(plan)
+        val state = com.nobby.ring.domain.model.ScheduleState(
+            result.config, ScheduleEngine.generate(result.config), result.logs, now,
+            CycleCalculator.positionAt(result.config, result.logs, now),
+            OverdueCalculator.nextPending(ScheduleEngine.generate(result.config), result.logs),
+            OverdueCalculator.overdue(result.config, ScheduleEngine.generate(result.config), result.logs, now),
+        )
+        assertEquals(PhaseKind.PAUSE, state.position.phase)
+        assertEquals(EventKind.INSERT, state.nextEvent!!.kind)
+        assertEquals(LocalDateTime(2026, 11, 8, 21, 0), state.nextEvent!!.plannedAt)
+        assertNull(state.overdue)
+    }
+
+    @Test
+    fun `ring out off the routine time keeps the break within the pause like a confirmation`() {
+        // Removed at 09:00, routine 21:00: the planned insertion may not be later than removal + 7 days.
+        val removedAt = LocalDateTime(2026, 11, 1, 9, 0)
+        val result = saved(ready(SetupStart.plan(SetupStatus.RING_OUT, method, removedAt, now)))
+        val insert = ScheduleEngine.generate(result.config).first { it.kind == EventKind.INSERT }
+        assertTrue(insert.plannedAt <= LocalDateTime(2026, 11, 8, 9, 0))
+        assertTrue(insert.plannedAt > now)
+        assertTrue(result.logs.single().eventId == CycleCalculator.currentRemoveId(result.config))
+    }
+
+    @Test
+    fun `ring out in the future is rejected`() {
+        assertEquals(SetupPlan.InFuture, SetupStart.plan(SetupStatus.RING_OUT, method, LocalDateTime(2026, 11, 3, 12, 0), now))
+    }
+
+    @Test
+    fun `ring out exactly one pause ago is still a pause with the insertion due now`() {
+        val at = LocalDateTime(2026, 11, 3, 21, 0)
+        val plan = ready(SetupStart.plan(SetupStatus.RING_OUT, method, LocalDateTime(2026, 10, 27, 21, 0), at))
+        val insert = ScheduleEngine.generate(saved(plan).config).first { it.kind == EventKind.INSERT }
+        assertEquals(at, insert.plannedAt)
+    }
+
+    @Test
+    fun `ring out longer ago than the pause means the pause is over`() {
+        val at = LocalDateTime(2026, 11, 3, 21, 1)
+        assertEquals(SetupPlan.PauseOver, SetupStart.plan(SetupStatus.RING_OUT, method, LocalDateTime(2026, 10, 27, 21, 0), at))
+        assertEquals(SetupPlan.PauseOver, SetupStart.plan(SetupStatus.RING_OUT, method, LocalDateTime(2026, 10, 20, 21, 0), now))
+    }
+
+    @Test
+    fun `ring out whose bounded insertion already passed means the pause is over`() {
+        // Removed 09:00 six days and 14 hours ago: the bound plans the insertion for last night 21:00, already past.
+        val at = LocalDateTime(2026, 11, 7, 23, 0)
+        assertEquals(SetupPlan.PauseOver, SetupStart.plan(SetupStatus.RING_OUT, method, LocalDateTime(2026, 11, 1, 9, 0), at))
+    }
+
+    @Test
+    fun `ring out without a pause in the rhythm means the pause is over`() {
+        val continuous = Method.ring(28, 0, LocalTime(21, 0))
+        assertEquals(SetupPlan.PauseOver, SetupStart.plan(SetupStatus.RING_OUT, continuous, LocalDateTime(2026, 11, 2, 21, 0), now))
+    }
+
+    @Test
+    fun `not started waits for the first insertion today or later`() {
+        val today = LocalDateTime(2026, 11, 3, 21, 0)
+        val plan = ready(SetupStart.plan(SetupStatus.NOT_STARTED, method, today, now))
+        assertEquals(today, plan.config.anchor)
+        assertTrue(plan.config.firstInsertPending)
+        assertNull(plan.removal)
+        val inThree = LocalDateTime(2026, 11, 6, 8, 0)
+        assertEquals(inThree, ready(SetupStart.plan(SetupStatus.NOT_STARTED, method, inThree, now)).config.anchor)
+    }
+
+    @Test
+    fun `not started in the past is rejected, the current minute is fine`() {
+        assertEquals(SetupPlan.InPast, SetupStart.plan(SetupStatus.NOT_STARTED, method, LocalDateTime(2026, 11, 3, 9, 59), now))
+        assertEquals(SetupPlan.InPast, SetupStart.plan(SetupStatus.NOT_STARTED, method, LocalDateTime(2026, 11, 2, 21, 0), now))
+        assertTrue(SetupStart.plan(SetupStatus.NOT_STARTED, method, LocalDateTime(2026, 11, 3, 10, 0), now) is SetupPlan.Ready)
+    }
+}

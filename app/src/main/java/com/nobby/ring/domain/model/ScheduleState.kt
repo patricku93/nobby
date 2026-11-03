@@ -10,6 +10,8 @@ data class CyclePosition(
     val cycleLengthDays: Int,
     val phaseLengthDays: Int,
     val ringIn: Boolean,
+    /** False while the first ring has not gone in yet ([ScheduleConfig.firstInsertPending]). */
+    val started: Boolean = true,
 )
 
 data class OverdueInfo(
