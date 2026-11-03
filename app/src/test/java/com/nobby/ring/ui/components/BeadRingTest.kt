@@ -121,6 +121,12 @@ class BeadRingTest {
         val tall = circleFitRows(tallW, tallH, 194f)
         assertTrue(tall.scales[0] < 1f)
         assertInside(tall, tallW, tallH, 194f)
+        // a tall 4-row stack where a smaller text cap keeps the number whole (I-C): it must not settle for a shrunk number
+        val fourW = listOf(87f, 178f, 184f, 96f)
+        val fourH = listOf(103f, 13f, 23f, 22f)
+        val four = circleFitRows(fourW, fourH, 175f)
+        assertEquals(1f, four.scales[0], 0f)
+        assertInside(four, fourW, fourH, 175f)
     }
 
     @Test

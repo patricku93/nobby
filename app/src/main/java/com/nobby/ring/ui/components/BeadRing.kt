@@ -86,14 +86,19 @@ fun circleFitScale(widths: List<Float>, heights: List<Float>, diameter: Float): 
  * Lays the countdown number out in [keep] of its measured height, centred, without clipping: the font's line box is
  * far taller than its figures (digits have no descender and stop at cap height), and that empty band would otherwise
  * take room from the lines below it inside the circle. The figures still draw in full inside the trimmed box.
+ * Meant for [CircleFitColumn], which measures its rows with unbounded constraints; the trimmed height is coerced into
+ * the incoming constraints so it also behaves under a minHeight elsewhere.
  */
-fun Modifier.trimLineBox(keep: Float = RING_NUMBER_KEEP): Modifier = layout { measurable, constraints ->
+internal fun Modifier.trimLineBox(keep: Float = RING_NUMBER_KEEP): Modifier = layout { measurable, constraints ->
     val p = measurable.measure(constraints)
-    val h = (p.height * keep).roundToInt()
+    val h = (p.height * keep).roundToInt().coerceIn(constraints.minHeight, constraints.maxHeight)
     layout(p.width, h) { p.place(0, -(p.height - h) / 2) }
 }
 
-/** Share of the number's line box that holds its figures, with a margin (Fredoka: about 0.58). */
+/**
+ * Share of the number's line box that holds its figures, with a margin (Fredoka: about 0.58). Tuned to the font:
+ * after a font change re-check it with BeadRingTest's font-scale 1.3 test and a Home screenshot.
+ */
 const val RING_NUMBER_KEEP = 0.7f
 
 /** Per-row [scales] and the height of the slot each row is centred in; the slots are stacked and centred on the circle. */
@@ -103,6 +108,7 @@ data class CircleFit(val scales: List<Float>, val slots: List<Float>)
 private const val MIN_TEXT_SCALE = 0.5f
 private const val CAP_STEP = 0.05f
 private const val FIT_PASSES = 6
+private const val FIT_EPSILON = 1e-3f
 
 /**
  * Fits a centred stack of rows into a circle of [diameter], keeping the first row (the countdown number) at full
@@ -119,7 +125,9 @@ fun circleFitRows(widths: List<Float>, heights: List<Float>, diameter: Float): C
     for (firstCap in caps(from = 1f, downTo = uniform)) {
         for (textCap in caps(from = 1f, downTo = floor)) {
             val fit = perRowFit(widths, heights, diameter, firstCap, textCap)
-            if (fit.scales.first() >= uniform && fit.scales.drop(1).all { it >= floor }) return fit
+            // Accept only when the number really kept this cap: perRowFit also caps it by its own chord, and a shrunk
+            // number must not win over a smaller text cap that keeps it whole (I-C).
+            if (fit.scales.first() >= firstCap - FIT_EPSILON && fit.scales.drop(1).all { it >= floor }) return fit
         }
     }
     return uniformFit(heights, uniform)
