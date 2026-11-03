@@ -1,5 +1,6 @@
 package com.nobby.ring.ui.components
 
+import android.text.format.DateFormat
 import android.content.res.Resources
 import androidx.annotation.PluralsRes
 import androidx.compose.runtime.Composable
@@ -11,6 +12,7 @@ import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.Importance
 import com.nobby.ring.domain.model.Palette
 import com.nobby.ring.domain.model.PhaseKind
+import com.nobby.ring.domain.model.ThemeMode
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -26,6 +28,22 @@ import kotlin.time.Duration
         EventKind.REMOVE -> R.string.event_remove
         EventKind.INSERT -> R.string.event_insert
         EventKind.SWAP -> R.string.event_swap
+    },
+)
+
+@Composable fun EventKind.shortLabel(): String = stringResource(
+    when (this) {
+        EventKind.REMOVE -> R.string.event_remove_short
+        EventKind.INSERT -> R.string.event_insert_short
+        EventKind.SWAP -> R.string.event_swap_short
+    },
+)
+
+@Composable fun ThemeMode.label(): String = stringResource(
+    when (this) {
+        ThemeMode.SYSTEM -> R.string.mode_system
+        ThemeMode.LIGHT -> R.string.mode_light
+        ThemeMode.DARK -> R.string.mode_dark
     },
 )
 
@@ -56,7 +74,18 @@ fun formatDate(date: LocalDate): String =
 fun formatTime(time: LocalTime): String =
     time.toJavaLocalTime().format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(Locale.getDefault()))
 
-fun formatDateTime(dt: LocalDateTime): String = "${formatDate(dt.date)} ${formatTime(dt.time)}"
+/** Locale-aware pattern from a skeleton, e.g. "EEEdMMM" -> "EEE, d. MMM" (de) / "EEE, MMM d" (en). */
+private fun bestPattern(skeleton: String): DateTimeFormatter =
+    DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(Locale.getDefault(), skeleton), Locale.getDefault())
+
+/** "So., 8. Nov." / "Sun, Nov 8". */
+fun formatShortDate(date: LocalDate): String = date.toJavaLocalDate().format(bestPattern("EEEdMMM"))
+
+/** "Sonntag, 8. November" / "Sunday, November 8". */
+fun formatLongDate(date: LocalDate): String = date.toJavaLocalDate().format(bestPattern("EEEEdMMMM"))
+
+/** "So., 8. Nov. · 21:00". The middle dot separates two values; it is not translated text. */
+fun formatDateTime(dt: LocalDateTime): String = "${formatShortDate(dt.date)} · ${formatTime(dt.time)}"
 
 /** Localised duration for composables; recomposes on configuration (locale) changes. */
 @Composable
