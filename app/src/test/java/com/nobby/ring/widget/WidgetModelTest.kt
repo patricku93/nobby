@@ -7,6 +7,8 @@ import com.nobby.ring.domain.model.ScheduleConfig
 import com.nobby.ring.domain.model.WidgetConfig
 import com.nobby.ring.domain.model.WidgetMode
 import com.nobby.ring.domain.model.WidgetRow
+import com.nobby.ring.ui.components.RingTone
+import com.nobby.ring.ui.mascot.MascotMood
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import org.junit.Assert.assertEquals
@@ -67,5 +69,29 @@ class WidgetModelTest {
         val data = WidgetModel.build(state, WidgetConfig(WidgetMode.SINGLE, emptyList()), strings)
         assertEquals("2 h overdue", data.rows[0].value)
         assertTrue(data.rows[0].urgent)
+    }
+
+    private val v2 = strings.copy(ringLabel = { label, n -> "$label $n" }, today = "Today", dayOf = { d, n -> "$d/$n" })
+
+    @Test
+    fun `headline, progress and mood come from the ring model`() {
+        val state = ScheduleRepository.buildState(config, emptyList(), LocalDateTime(2026, 11, 12, 12, 0))
+        val data = WidgetModel.build(state, WidgetConfig(WidgetMode.SINGLE, emptyList()), v2)
+        assertEquals(WidgetHeadline("10", "UNTIL_REMOVE 10"), data.headline)
+        assertEquals(12f / 21f, data.progress, 0.0001f)
+        assertEquals(MascotMood.HAPPY, data.mood)
+        assertEquals(RingTone.WEAR, data.tone)
+        assertEquals("12/21", data.dayLabel)
+    }
+
+    @Test
+    fun `due today shows the word, the event and the done target`() {
+        val state = ScheduleRepository.buildState(config, emptyList(), LocalDateTime(2026, 11, 22, 10, 0))
+        val data = WidgetModel.build(state, WidgetConfig(WidgetMode.SINGLE, emptyList()), v2)
+        assertEquals(WidgetHeadline("Today", "remove"), data.headline)
+        assertEquals(RingTone.DUE, data.tone)
+        assertEquals(MascotMood.NEUTRAL, data.mood)
+        assertEquals("REMOVE@2026-11-22T21:00", data.dueEventId)
+        assertEquals("21/21", data.dayLabel)
     }
 }

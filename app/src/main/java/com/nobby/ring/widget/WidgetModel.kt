@@ -7,16 +7,32 @@ import com.nobby.ring.domain.model.ScheduledEvent
 import com.nobby.ring.domain.model.WidgetConfig
 import com.nobby.ring.domain.model.WidgetMode
 import com.nobby.ring.domain.model.WidgetRow
+import com.nobby.ring.ui.components.RingTone
+import com.nobby.ring.ui.mascot.MascotMood
+import com.nobby.ring.ui.ring.RingLabel
+import com.nobby.ring.ui.ring.RingModel
 import kotlin.time.Duration.Companion.hours
 
 data class WidgetStrings(
     val nextAny: String, val nextRemove: String, val nextInsert: String, val overdue: String, val cycleDay: String, val none: String,
     val inDays: (Int) -> String, val overdueDays: (Int) -> String, val overdueHours: (Int) -> String,
     val cycleDayFmt: (Int, Int) -> String, val kindLabel: (EventKind) -> String,
+    val ringLabel: (RingLabel, Int) -> String = { _, _ -> "" },
+    val today: String = "",
+    val dayOf: (Int, Int) -> String = { _, _ -> "" },
 )
 
 data class WidgetRowData(val row: WidgetRow, val label: String, val value: String, val urgent: Boolean)
-data class WidgetData(val rows: List<WidgetRowData>, val dueEventId: String?)
+data class WidgetHeadline(val number: String, val label: String)
+data class WidgetData(
+    val rows: List<WidgetRowData>,
+    val dueEventId: String?,
+    val headline: WidgetHeadline? = null,
+    val progress: Float = 0f,
+    val mood: MascotMood = MascotMood.HAPPY,
+    val tone: RingTone = RingTone.WEAR,
+    val dayLabel: String = "",
+)
 
 object WidgetModel {
     fun build(state: ScheduleState?, config: WidgetConfig, s: WidgetStrings): WidgetData {
@@ -26,7 +42,24 @@ object WidgetModel {
             WidgetMode.SINGLE -> listOf(WidgetRow.NEXT_ANY)
             WidgetMode.MULTI -> config.rows.take(WidgetConfig.MAX_ROWS).ifEmpty { listOf(WidgetRow.NEXT_ANY) }
         }
-        return WidgetData(rows.map { row(it, state, s) }, due)
+        val ring = RingModel.from(state)
+        val p = state.position
+        val length = p.phaseLengthDays.coerceAtLeast(1)
+        return WidgetData(
+            rows = rows.map { row(it, state, s) },
+            dueEventId = due,
+            headline = headline(ring, s),
+            progress = (p.dayInPhase.toFloat() / length).coerceIn(0f, 1f),
+            mood = ring.mood,
+            tone = ring.tone,
+            dayLabel = s.dayOf(p.dayInPhase.coerceAtMost(length), p.phaseLengthDays),
+        )
+    }
+
+    private fun headline(ring: RingModel, s: WidgetStrings): WidgetHeadline = when (ring.label) {
+        RingLabel.TODAY -> WidgetHeadline(s.today, ring.event?.let { s.kindLabel(it.kind) } ?: s.none)
+        RingLabel.NONE -> WidgetHeadline("–", s.none)
+        else -> WidgetHeadline("${ring.number ?: 0}", s.ringLabel(ring.label, ring.number ?: 0))
     }
 
     private fun row(row: WidgetRow, state: ScheduleState, s: WidgetStrings): WidgetRowData = when (row) {
