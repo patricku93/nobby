@@ -2,6 +2,8 @@ package com.nobby.ring.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,14 +57,7 @@ fun NextEventCard(
                 )
             }
         }
-        if (actions != null) {
-            Row(
-                Modifier.fillMaxWidth().padding(top = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                content = actions,
-            )
-        }
+        if (actions != null) ActionRow(actions)
     }
 }
 
@@ -97,15 +92,25 @@ fun OverdueCard(
                 Text(safetyText, style = MaterialTheme.typography.bodyMedium)
             }
         }
-        Row(
-            Modifier.fillMaxWidth().padding(top = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        ActionRow {
             NobbyButton(onDone, enabled = enabled, icon = Icons.Rounded.Check) { Text(stringResource(R.string.home_mark_done)) }
             NobbyButton(onSnooze, enabled = enabled, tone = ButtonTone.TEXT, icon = Icons.Rounded.Snooze, contentColor = LocalContentColor.current) {
                 Text(stringResource(R.string.home_snooze))
             }
         }
     }
+}
+
+/**
+ * Card buttons side by side while they fit; a button that does not fit moves to its own line instead of wrapping its
+ * label mid-word (DE "Pause überspringen" beside "Erledigt" at 360 dp / font scale 1.3).
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ActionRow(content: @Composable RowScope.() -> Unit) {
+    FlowRow(
+        Modifier.fillMaxWidth().padding(top = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) { content() }
 }

@@ -7,6 +7,8 @@
     <string name="nav_calendar">Kalender</string>
     <string name="nav_history">Verlauf</string>
     <string name="nav_settings">Einstellungen</string>
+    <!-- Bottom-bar tab: fits on one line at 360 dp / font scale 1.3; the screen title keeps nav_settings. -->
+    <string name="nav_settings_tab">Optionen</string>
     <string name="action_back">Zurück</string>
     <string name="action_next">Weiter</string>
     <string name="action_done">Erledigt</string>

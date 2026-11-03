@@ -45,7 +45,7 @@ fun NobbyNavHost(startDestination: String) {
                     NavItem(Routes.HOME, R.string.nav_home, Icons.Rounded.Home, Icons.Outlined.Home),
                     NavItem(Routes.CALENDAR, R.string.nav_calendar, Icons.Rounded.CalendarMonth, Icons.Outlined.CalendarMonth),
                     NavItem(Routes.HISTORY, R.string.nav_history, Icons.Rounded.History, Icons.Outlined.History),
-                    NavItem(Routes.SETTINGS, R.string.nav_settings, Icons.Rounded.Settings, Icons.Outlined.Settings),
+                    NavItem(Routes.SETTINGS, R.string.nav_settings_tab, Icons.Rounded.Settings, Icons.Outlined.Settings),
                 ).forEach { item ->
                     val selected = route == item.route
                     val c = MaterialTheme.colorScheme

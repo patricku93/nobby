@@ -19,7 +19,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nobby.ring.ui.theme.NobbyRadius
 import com.nobby.ring.ui.theme.NobbyTheme
@@ -43,7 +42,8 @@ fun PermissionBanner(text: String, icon: ImageVector, actionLabel: String, onCli
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Icon(icon, contentDescription = null, Modifier.size(20.dp), tint = c.tertiary)
-        Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        // The whole hint wraps; the action stays at the end of the row.
+        Text(text, Modifier.weight(1f).padding(vertical = 4.dp), style = MaterialTheme.typography.bodySmall, color = fg)
         Text(
             actionLabel,
             Modifier.padding(horizontal = 12.dp, vertical = 8.dp),

@@ -129,15 +129,17 @@ private fun HistoryRow(e: HistoryEntry) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = c.onSurfaceVariant,
             )
+            // Under the date, not beside it: a long "7 Std. 14 Min. zu früh" must not squeeze title and date.
+            Text(
+                timingText,
+                Modifier.padding(top = 2.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = when (timing) {
+                    HistoryTiming.ON_TIME -> c.secondary
+                    HistoryTiming.LATE -> c.error
+                    HistoryTiming.EARLY -> c.onSurfaceVariant
+                },
+            )
         }
-        Text(
-            timingText,
-            style = MaterialTheme.typography.labelMedium,
-            color = when (timing) {
-                HistoryTiming.ON_TIME -> c.secondary
-                HistoryTiming.LATE -> c.error
-                HistoryTiming.EARLY -> c.onSurfaceVariant
-            },
-        )
     }
 }

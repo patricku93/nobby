@@ -88,10 +88,14 @@ private fun MiniHomePreview() {
                 Text("10", style = NobbyType.countdown.copy(fontSize = 40.sp, lineHeight = 40.sp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                PhaseChip(stringResource(R.string.phase_day, stringResource(R.string.phase_wear), 12, 21), ChipTone.WEAR)
+                // Short chip texts: the phase names alone fit beside the ring at 360 dp / font scale 1.3.
+                PhaseChip(stringResource(R.string.phase_wear), ChipTone.WEAR)
                 PhaseChip(stringResource(R.string.phase_pause), ChipTone.PAUSE)
-                NobbyButton(onClick = {}, icon = Icons.Rounded.Check) { Text(stringResource(R.string.action_done)) }
             }
+        }
+        // Own line, so the label never wraps mid-word next to the ring.
+        NobbyButton(onClick = {}, Modifier.padding(top = 12.dp), icon = Icons.Rounded.Check) {
+            Text(stringResource(R.string.action_done), maxLines = 1, softWrap = false)
         }
     }
 }

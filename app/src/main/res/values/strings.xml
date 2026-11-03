@@ -7,6 +7,8 @@
     <string name="nav_calendar">Calendar</string>
     <string name="nav_history">History</string>
     <string name="nav_settings">Settings</string>
+    <!-- Bottom-bar tab: fits on one line at 360 dp / font scale 1.3; the screen title keeps nav_settings. -->
+    <string name="nav_settings_tab">Settings</string>
     <string name="action_back">Back</string>
     <string name="action_next">Next</string>
     <string name="action_done">Done</string>
