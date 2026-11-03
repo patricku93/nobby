@@ -1,4 +1,5 @@
 package com.nobby.ring.notifications
+import com.nobby.ring.data.prefs.ThemeStore
 
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -54,7 +55,7 @@ class ReminderSchedulerTest {
         val reminders = ReminderRepository(db.reminderRuleDao())
         schedule.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 1, 21, 0), 1))
         reminders.replaceAll(ReminderRule.defaults(LocalTime(21, 0)))
-        scheduler = ReminderScheduler(context, schedule, reminders, OverdueConfigStore(ds), clock, ds, Notifier(context))
+        scheduler = ReminderScheduler(context, schedule, reminders, OverdueConfigStore(ds), clock, ds, Notifier(context, ThemeStore(ds)))
     }
 
     private fun overdueAlarmTime(): Long? {

@@ -1,4 +1,5 @@
 package com.nobby.ring.ui.home
+import com.nobby.ring.data.prefs.ThemeStore
 
 import android.app.AlarmManager
 import android.app.NotificationManager
@@ -44,10 +45,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class HomeViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private lateinit var db: NobbyDatabase
@@ -76,8 +79,8 @@ class HomeViewModelTest {
     private fun vm() = HomeViewModel(
         context, repo, clock,
         ScheduleChangeNotifier(setOf(object : ScheduleChangeListener { override suspend fun onScheduleChanged() { changes++ } })),
-        ReminderScheduler(context, repo, ReminderRepository(db.reminderRuleDao()), OverdueConfigStore(ds), clock, ds, Notifier(context)),
-        Notifier(context),
+        ReminderScheduler(context, repo, ReminderRepository(db.reminderRuleDao()), OverdueConfigStore(ds), clock, ds, Notifier(context, ThemeStore(ds))),
+        Notifier(context, ThemeStore(ds)),
     )
 
     @Test
@@ -174,7 +177,7 @@ class HomeViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         val overdue = vm.uiState.first { it.state != null }.state!!.overdue!!
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        Notifier(context).showOverdue(overdue.event.kind, overdue.event.plannedAt, overdue.event.id, safetyBreached = false)
+        Notifier(context, ThemeStore(ds)).showOverdue(overdue.event.kind, overdue.event.plannedAt, overdue.event.id, safetyBreached = false)
         assertNotNull(shadowOf(nm).getNotification(Notifier.OVERDUE_ID))
         vm.snooze()
         repeat(500) { // the DataStore read inside snooze() runs on a real IO thread, so poll for its effect
@@ -197,7 +200,7 @@ class HomeViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         vm.uiState.first { it.state != null }
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        Notifier(context).showOverdue(EventKind.REMOVE, LocalDateTime(2026, 11, 22, 21, 0), "x", safetyBreached = false)
+        Notifier(context, ThemeStore(ds)).showOverdue(EventKind.REMOVE, LocalDateTime(2026, 11, 22, 21, 0), "x", safetyBreached = false)
         vm.snooze()
         dispatcher.scheduler.advanceUntilIdle()
         assertNotNull(shadowOf(nm).getNotification(Notifier.OVERDUE_ID))

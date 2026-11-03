@@ -4,22 +4,36 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.util.Log
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.nobby.ring.MainActivity
 import com.nobby.ring.R
+import com.nobby.ring.data.prefs.ThemeStore
 import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.Importance
+import com.nobby.ring.domain.model.Palette
 import com.nobby.ring.ui.components.formatDateTime
+import com.nobby.ring.ui.mascot.MascotMood
+import com.nobby.ring.ui.theme.roles
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
 import kotlinx.datetime.LocalDateTime
 import javax.inject.Inject
 
-class Notifier @Inject constructor(@ApplicationContext private val context: Context) {
+class Notifier @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val themeStore: ThemeStore,
+) {
 
-    fun showReminder(kind: EventKind, plannedAt: LocalDateTime, importance: Importance, eventId: String) {
+    suspend fun showReminder(kind: EventKind, plannedAt: LocalDateTime, importance: Importance, eventId: String) {
+        val palette = palette()
         val n = NotificationCompat.Builder(context, Channels.idFor(importance))
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_stat_nobby)
+            .setLargeIcon(NotificationIcons.large(context, palette, MascotMood.HAPPY))
+            .setColor(palette.roles(dark = false).primary.toArgb())
             .setContentTitle(context.getString(R.string.notif_reminder_title, kindLabel(kind)))
             .setContentText(context.getString(R.string.notif_reminder_body, formatDateTime(plannedAt)))
             .setPriority(priorityFor(importance))
@@ -29,13 +43,16 @@ class Notifier @Inject constructor(@ApplicationContext private val context: Cont
         notify(eventId.hashCode(), n)
     }
 
-    fun showOverdue(kind: EventKind, plannedAt: LocalDateTime, eventId: String, safetyBreached: Boolean) {
+    suspend fun showOverdue(kind: EventKind, plannedAt: LocalDateTime, eventId: String, safetyBreached: Boolean) {
+        val palette = palette()
         // REMOVE/SWAP overdue means the ring stays in too long; INSERT overdue means the break runs too long.
         val safety = if (kind == EventKind.INSERT) R.string.notif_overdue_safety_pause else R.string.notif_overdue_safety_wear
         val body = context.getString(R.string.notif_overdue_body, formatDateTime(plannedAt))
         val text = if (safetyBreached) context.getString(R.string.notif_overdue_body_with_safety, body, context.getString(safety)) else body
         val builder = NotificationCompat.Builder(context, Channels.URGENT)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_stat_nobby)
+            .setLargeIcon(NotificationIcons.large(context, palette, MascotMood.WORRIED))
+            .setColor(palette.roles(dark = false).primary.toArgb())
             .setContentTitle(context.getString(R.string.notif_overdue_title, kindLabel(kind)))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
@@ -51,6 +68,16 @@ class Notifier @Inject constructor(@ApplicationContext private val context: Cont
     }
 
     fun cancelOverdue() = NotificationManagerCompat.from(context).cancel(OVERDUE_ID)
+
+    /** The active preset; a broken preference file must never stop an alarm, so reading falls back to Berry. */
+    private suspend fun palette(): Palette = try {
+        themeStore.theme.first().palette
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.e("NoBby", "reading the theme for a notification failed", e)
+        Palette.BERRY
+    }
 
     private fun notify(id: Int, n: Notification) {
         // notify() throws SecurityException when POST_NOTIFICATIONS is denied; that must not crash a receiver.
