@@ -24,6 +24,8 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -108,6 +110,37 @@ class ReminderSchedulerTest {
         scheduler.rescheduleAll()
         assertEquals(snoozed, overdueAlarmTime())
     }
+    private fun overduePi(): PendingIntent? = PendingIntent.getBroadcast(
+        context, ReminderScheduler.OVERDUE_CODE, Intent(context, AlarmReceiver::class.java).setAction(AlarmReceiver.ACTION_OVERDUE),
+        PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+    )
+
+    @Test
+    fun `app start after a force-stop re-arms the overdue alarm of an overdue event (I2)`() = runTest {
+        nowValue = LocalDateTime(2026, 11, 22, 23, 0) // REMOVE of Nov 22 21:00 is overdue
+        scheduler.rescheduleAll()
+        alarmManager.cancel(overduePi()!!) // force-stop: alarm gone, PendingIntent and stored id still there
+        assertNotNull(overduePi())
+        assertNull(overdueAlarmTime())
+        nowValue = LocalDateTime(2026, 11, 22, 23, 30)
+        scheduler.rescheduleAll() // MainViewModel.init
+        assertEquals(nowValue.toInstant(TimeZone.UTC).toEpochMilliseconds(), overdueAlarmTime())
+    }
+
+    @Test
+    fun `a snooze survives a force-stop and a reschedule (I2)`() = runTest {
+        nowValue = LocalDateTime(2026, 11, 22, 23, 0)
+        scheduler.rescheduleAll()
+        val removeId = schedule.currentState()!!.nextEvent!!.id
+        scheduler.armOverdueIn(1, removeId)
+        val snoozed = nowValue.toInstant(TimeZone.UTC).toEpochMilliseconds() + 3_600_000L
+        alarmManager.cancel(overduePi()!!)
+        scheduler.rescheduleAll()
+        assertEquals(snoozed, overdueAlarmTime())
+        scheduler.rescheduleAll() // idempotent
+        assertEquals(snoozed, overdueAlarmTime())
+    }
+
     @Test
     fun `a waiting schedule keeps its overdue first-ring nag after a new time of day is applied (I1)`() = runTest {
         nowValue = LocalDateTime(2026, 11, 22, 23, 0)

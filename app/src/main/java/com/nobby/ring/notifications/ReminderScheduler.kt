@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.nobby.ring.data.prefs.OverdueConfigStore
@@ -40,6 +41,7 @@ class ReminderScheduler @Inject constructor(
     private val alarmManager: AlarmManager get() = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     private val trackedKey = stringSetPreferencesKey("scheduled_alarm_ids")
     private val overdueArmedKey = stringPreferencesKey("overdue_armed_event_id")
+    private val overdueArmedAtKey = longPreferencesKey("overdue_armed_at")
     private val mutex = Mutex()
 
     override suspend fun onScheduleChanged() = rescheduleAll()
@@ -48,8 +50,9 @@ class ReminderScheduler @Inject constructor(
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
 
     /**
-     * Cancels every reminder alarm set earlier and re-arms from the current state. The single overdue alarm is kept
-     * when it already targets the same overdue event (so a snooze survives a reschedule). Safe to call repeatedly.
+     * Cancels every reminder alarm set earlier and re-arms from the current state. The single overdue alarm is always
+     * set again; for the same overdue event at its stored fire time (so a snooze survives a reschedule). Safe to call
+     * repeatedly.
      */
     suspend fun rescheduleAll() = mutex.withLock {
         // Read and plan first (cancellable); then cancel + arm + persist as one non-cancellable step so a cancelled
@@ -87,8 +90,7 @@ class ReminderScheduler @Inject constructor(
     /** Re-arms the single overdue alarm [hours] from now (used for the repeat nag and for snooze). */
     suspend fun armOverdueIn(hours: Int, eventId: String) = mutex.withLock {
         val at = clock.now().toInstant(clock.zone) + hours.hours
-        setAt(OVERDUE_CODE, overdueIntent(eventId), at.toEpochMilliseconds())
-        dataStore.edit { it[overdueArmedKey] = eventId }
+        armOverdue(eventId, at.toEpochMilliseconds())
     }
 
     suspend fun repeatIntervalHours(): Int = overdueConfig.config.first().repeatEveryHours
@@ -121,8 +123,11 @@ class ReminderScheduler @Inject constructor(
     }
 
     /**
-     * Arms the overdue alarm for [next] (id to plannedAt), or clears it when there is none. An already-overdue event
-     * whose alarm is still pending for the same event id keeps that alarm, so a snooze is not turned into an immediate nag.
+     * Arms the overdue alarm for [next] (id to plannedAt), or clears it when there is none. The alarm is always set
+     * again: AlarmManager cannot be queried, and a force-stop drops the alarm while its PendingIntent and the stored id
+     * survive (I2). An already-overdue event re-uses the stored fire time of the same event (snooze / repeat nag), so
+     * a snooze is not turned into an immediate nag; a stored time that has passed (the alarm was lost) fires now.
+     * Re-setting the same PendingIntent replaces the alarm, so this is idempotent.
      */
     private suspend fun syncOverdueAlarm(next: Pair<String, LocalDateTime>?, now: LocalDateTime) {
         if (next == null) {
@@ -130,22 +135,31 @@ class ReminderScheduler @Inject constructor(
             return
         }
         val (eventId, plannedAt) = next
-        val armedId = dataStore.data.first()[overdueArmedKey]
-        val keepExisting = plannedAt <= now && armedId == eventId && pendingOverdue(eventId) != null
-        if (keepExisting) return
-        val fireAt = if (plannedAt > now) plannedAt else now
-        setAt(OVERDUE_CODE, overdueIntent(eventId), fireAt.toInstant(clock.zone).toEpochMilliseconds())
-        dataStore.edit { it[overdueArmedKey] = eventId }
+        val prefs = dataStore.data.first()
+        val kept = prefs[overdueArmedAtKey]?.takeIf { plannedAt <= now && prefs[overdueArmedKey] == eventId }
+        val planned = plannedAt.toInstant(clock.zone).toEpochMilliseconds()
+        armOverdue(eventId, maxOf(kept ?: planned, now.toInstant(clock.zone).toEpochMilliseconds()))
     }
 
-    /** The pending overdue alarm's PendingIntent, or null when none is armed (extras are ignored when matching). */
+    private suspend fun armOverdue(eventId: String, atMillis: Long) {
+        setAt(OVERDUE_CODE, overdueIntent(eventId), atMillis)
+        dataStore.edit {
+            it[overdueArmedKey] = eventId
+            it[overdueArmedAtKey] = atMillis
+        }
+    }
+
+    /** The overdue alarm's PendingIntent, or null when none exists (extras are ignored when matching). It may outlive the alarm. */
     private fun pendingOverdue(eventId: String): PendingIntent? = PendingIntent.getBroadcast(
         context, OVERDUE_CODE, overdueIntent(eventId), PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
     )
 
     private suspend fun cancelOverdueAlarm() {
         pendingOverdue(dataStore.data.first()[overdueArmedKey].orEmpty())?.let { alarmManager.cancel(it); it.cancel() }
-        dataStore.edit { it.remove(overdueArmedKey) }
+        dataStore.edit {
+            it.remove(overdueArmedKey)
+            it.remove(overdueArmedAtKey)
+        }
     }
 
     private fun trackingEntry(action: String, code: Int) = "$action|$code"
