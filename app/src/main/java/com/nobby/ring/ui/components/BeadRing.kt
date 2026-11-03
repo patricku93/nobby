@@ -9,19 +9,12 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.SemanticsPropertyKey
@@ -34,10 +27,8 @@ import androidx.compose.ui.unit.min
 import com.nobby.ring.ui.theme.NobbyMotion
 import com.nobby.ring.ui.theme.reducedMotion
 import kotlin.math.abs
-import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.roundToInt
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 enum class RingTone { WEAR, DUE, OVERDUE, SAFETY, PAUSE }
@@ -193,15 +184,6 @@ fun CircleFitColumn(modifier: Modifier = Modifier, content: @Composable () -> Un
     }
 }
 
-private data class Tones(val track: Color, val bead: Color)
-
-private fun ColorScheme.tones(tone: RingTone): Tones = when (tone) {
-    RingTone.WEAR -> Tones(surfaceContainerHigh, primary)
-    RingTone.DUE -> Tones(primaryContainer, primary)
-    RingTone.OVERDUE, RingTone.SAFETY -> Tones(errorContainer, error)
-    RingTone.PAUSE -> Tones(secondaryContainer, secondary)
-}
-
 /**
  * The countdown bracelet (nobby.js ring()): a track circle plus one bead per day of the phase, today's bead
  * highlighted. [center] gets the free disc inside the beads ([ringInnerDiameter]); use [CircleFitColumn] for text so it
@@ -225,40 +207,14 @@ fun BeadRing(
     )
     BoxWithConstraints(modifier.aspectRatio(1f), contentAlignment = Alignment.Center) {
         val ringSize = min(maxWidth, maxHeight)
-        Canvas(Modifier.size(ringSize).semantics { ringTone = tone }) { drawRing(scheme, tone, beads.coerceAtLeast(1), fill) }
+        Canvas(Modifier.size(ringSize).semantics { ringTone = tone }) {
+            drawRing(scheme.ringColors(tone), beads.coerceAtLeast(1), fill, safety = tone == RingTone.SAFETY)
+        }
         Box(Modifier.size(ringInnerDiameter(ringSize)), contentAlignment = Alignment.Center) { center(ringSize) }
         if (sticker != null) {
             Box(Modifier.align(Alignment.TopEnd).offset(x = ringSize * 0.06f, y = -ringSize * 0.05f).rotate(8f)) {
                 sticker(ringSize * 0.3f)
             }
-        }
-    }
-}
-
-private fun DrawScope.drawRing(scheme: ColorScheme, tone: RingTone, beads: Int, fill: Float) {
-    val t = scheme.tones(tone)
-    val s = size.minDimension
-    val tw = s * 0.085f
-    val r = s / 2f - tw / 2f - 4.dp.toPx()
-    val c = Offset(size.width / 2f, size.height / 2f)
-    if (tone == RingTone.SAFETY) drawCircle(scheme.errorContainer.copy(alpha = 0.55f), r - tw / 2f - 10.dp.toPx(), c)
-    drawCircle(t.track, r, c, style = Stroke(tw))
-    if (beads > MAX_BEADS) {
-        val sweep = 360f * (fill / beads).coerceIn(0f, 1f)
-        drawArc(t.bead, -90f, sweep, false, Offset(c.x - r, c.y - r), Size(2 * r, 2 * r), style = Stroke(tw * 0.58f, cap = StrokeCap.Round))
-        return
-    }
-    val step = 360f / beads
-    beadKinds(beads, fill.toInt()).forEachIndexed { i, kind ->
-        val a = Math.toRadians((-90f + step * (i + 0.5f)).toDouble())
-        val p = Offset(c.x + r * cos(a).toFloat(), c.y + r * sin(a).toFloat())
-        when (kind) {
-            BeadKind.CURRENT -> {
-                drawCircle(scheme.surfaceContainerLowest, tw * 0.62f, p)
-                drawCircle(t.bead, tw * 0.44f, p)
-            }
-            BeadKind.PAST -> drawCircle(t.bead, tw * 0.29f, p)
-            BeadKind.FUTURE -> drawCircle(scheme.outline.copy(alpha = 0.7f), tw * 0.14f, p)
         }
     }
 }
