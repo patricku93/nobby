@@ -11,6 +11,7 @@ import com.nobby.ring.data.db.EventLogDao
 import com.nobby.ring.data.db.NobbyDatabase
 import com.nobby.ring.data.db.NoteDao
 import com.nobby.ring.data.db.ReminderRuleDao
+import com.nobby.ring.data.prefs.WidgetStyleMigration
 import com.nobby.ring.domain.NobbyClock
 import com.nobby.ring.domain.SystemClock
 import dagger.Module
@@ -28,7 +29,7 @@ import javax.inject.Singleton
 object AppModule {
     @Provides @Singleton
     fun dataStore(@ApplicationContext context: Context): DataStore<Preferences> =
-        PreferenceDataStoreFactory.create { context.preferencesDataStoreFile("nobby_prefs") }
+        PreferenceDataStoreFactory.create(migrations = listOf(WidgetStyleMigration)) { context.preferencesDataStoreFile("nobby_prefs") }
 
     @Provides @Singleton
     fun database(@ApplicationContext context: Context): NobbyDatabase =

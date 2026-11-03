@@ -287,6 +287,13 @@
     <string name="widget_mode">Layout</string>
     <string name="widget_mode_single">Ein großer Countdown</string>
     <string name="widget_mode_multi">Bis zu drei Zeilen</string>
+    <string name="widget_style">Stil</string>
+    <string name="widget_style_ring">Ring</string>
+    <string name="widget_style_classic">Klassisch</string>
+    <string name="widget_background">Hintergrund</string>
+    <string name="widget_background_value">%1$d %%</string>
+    <string name="widget_background_hint" formatted="false">Unter 40 % hängt die Lesbarkeit von deinem Hintergrundbild ab.</string>
+    <string name="widget_preview">Vorschau</string>
     <string name="widget_rows">Zeilen</string>
     <string name="widget_row_next_any">Nächster Schritt</string>
     <string name="widget_row_next_remove">Nächstes Rausnehmen</string>

@@ -12,6 +12,7 @@ import com.nobby.ring.ui.mascot.MascotMood
 import com.nobby.ring.ui.ring.OverdueAmount
 import com.nobby.ring.ui.ring.RingLabel
 import com.nobby.ring.ui.ring.RingModel
+import kotlinx.datetime.LocalDateTime
 
 data class WidgetStrings(
     val nextAny: String, val nextRemove: String, val nextInsert: String, val overdue: String, val cycleDay: String, val none: String,
@@ -32,11 +33,19 @@ data class WidgetData(
     val mood: MascotMood = MascotMood.HAPPY,
     val tone: RingTone = RingTone.WEAR,
     val dayLabel: String = "",
+    /** Home ring beads (phase days) and done beads, from [RingModel]. */
+    val beads: Int = 1,
+    val done: Int = 0,
+    /** Planned time of the event the ring counts down to (or the overdue one); null when nothing is pending. */
+    val nextAt: LocalDateTime? = null,
 )
+
+internal fun WidgetData.head(): WidgetHeadline = headline ?: WidgetHeadline("–", "")
+internal fun WidgetData.urgent(): Boolean = tone == RingTone.OVERDUE || tone == RingTone.SAFETY
 
 object WidgetModel {
     fun build(state: ScheduleState?, config: WidgetConfig, s: WidgetStrings): WidgetData {
-        if (state == null) return WidgetData(listOf(WidgetRowData(WidgetRow.NEXT_ANY, s.nextAny, s.none, false)), null)
+        if (state == null) return WidgetData(listOf(WidgetRowData(WidgetRow.NEXT_ANY, s.nextAny, s.none, false)), null, WidgetHeadline("–", s.none))
         val due = state.nextEvent?.takeIf { state.daysUntilNext != null && state.daysUntilNext!! <= 0 }?.id
         val rows = when (config.mode) {
             WidgetMode.SINGLE -> listOf(WidgetRow.NEXT_ANY)
@@ -53,6 +62,9 @@ object WidgetModel {
             progress = (p.dayInPhase.toFloat() / length).coerceIn(0f, 1f),
             mood = ring.mood,
             tone = ring.tone,
+            beads = ring.beads,
+            done = ring.done,
+            nextAt = ring.event?.plannedAt,
             // While overdue a full "Day 21/21" is misleading and the big number needs its unit: name it here, as Home does.
             dayLabel = if (state.overdue != null) head.label else s.dayOf(p.dayInPhase.coerceAtMost(length), p.phaseLengthDays),
         )

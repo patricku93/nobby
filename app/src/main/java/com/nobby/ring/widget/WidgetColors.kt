@@ -4,6 +4,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.glance.unit.ColorProvider
 import com.nobby.ring.domain.model.Palette
 import com.nobby.ring.domain.model.ThemeMode
+import com.nobby.ring.domain.model.WidgetConfig
+import com.nobby.ring.ui.components.RingColors
+import com.nobby.ring.ui.components.RingTone
+import com.nobby.ring.ui.components.ringColors
+import com.nobby.ring.ui.theme.colorScheme
 import com.nobby.ring.ui.theme.roles
 import androidx.glance.color.ColorProvider as DayNightColorProvider
 
@@ -26,7 +31,14 @@ data class WidgetColors(
     val mascotBody: Color,
     val mascotCheek: Color,
     val ink: Color,
-)
+    /** Home's ring colours per tone ([ringColors]), so the widget bracelet matches Home exactly. */
+    val ringTones: Map<RingTone, RingColors> = emptyMap(),
+) {
+    fun ring(tone: RingTone): RingColors = ringTones.getValue(tone)
+
+    /** The background with [opacityPercent] (0..100) as alpha; nothing else in the widget is ever translucent. */
+    fun background(opacityPercent: Int): Color = bg.copy(alpha = opacityPercent.coerceIn(0, WidgetConfig.MAX_OPACITY) / 100f)
+}
 
 /** Background = surface (light) / surfaceContainer (dark); track = surfaceContainerHigh / Highest. */
 fun Palette.widgetColors(dark: Boolean): WidgetColors {
@@ -49,6 +61,7 @@ fun Palette.widgetColors(dark: Boolean): WidgetColors {
         mascotBody = r.mascot,
         mascotCheek = r.mascotCheek,
         ink = r.ink,
+        ringTones = colorScheme(dark).let { scheme -> RingTone.entries.associateWith { scheme.ringColors(it) } },
     )
 }
 
@@ -59,4 +72,6 @@ class WidgetPalette(private val light: WidgetColors, private val dark: WidgetCol
         ThemeMode.LIGHT -> ColorProvider(pick(light))
         ThemeMode.DARK -> ColorProvider(pick(dark))
     }
+
+    fun background(opacityPercent: Int): ColorProvider = of { it.background(opacityPercent) }
 }

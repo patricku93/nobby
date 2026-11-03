@@ -15,6 +15,7 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionStartActivity
@@ -75,10 +76,11 @@ interface WidgetEntryPoint {
     fun changeNotifier(): ScheduleChangeNotifier
 }
 
-private data class WidgetLabels(val done: String, val appName: String)
+internal data class WidgetLabels(val done: String, val appName: String)
 
 class RingWidget : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Responsive(setOf(SMALL, MEDIUM, WIDE))
+    // Exact: the ring picture is rendered at the real widget size; the layouts below still switch at SMALL/MEDIUM/WIDE.
+    override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val ep = EntryPointAccessors.fromApplication(context.applicationContext, WidgetEntryPoint::class.java)
@@ -95,21 +97,25 @@ class RingWidget : GlanceAppWidget() {
             val theme by ep.theme().theme.collectAsState(initialTheme)
             val data = WidgetModel.build(state, config, strings)
             val palette = WidgetPalette(theme.palette.widgetColors(false), theme.palette.widgetColors(true), theme.mode)
-            WidgetContent(data, config.mode, palette, labels)
+            WidgetContent(data, config, palette, labels)
         }
     }
 
     @Composable
-    private fun WidgetContent(data: WidgetData, mode: WidgetMode, p: WidgetPalette, labels: WidgetLabels) {
+    private fun WidgetContent(data: WidgetData, config: WidgetConfig, p: WidgetPalette, labels: WidgetLabels) {
         val size = LocalSize.current
         val small = size.height < MEDIUM.height
-        Box(
-            GlanceModifier.fillMaxSize().background(p.of { it.bg }).cornerRadius(24.dp)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .clickable(actionStartActivity<MainActivity>()),
-        ) {
+        val ring = ringImages(data, config, size, LocalContext.current)
+        val frame = GlanceModifier.fillMaxSize().background(p.background(config.backgroundOpacity)).cornerRadius(24.dp)
+        if (useRingLayout(config, ring)) {
+            Box(frame.padding(RING_PADDING).clickable(actionStartActivity<MainActivity>()), contentAlignment = Alignment.Center) {
+                RingLayout(data, ring!!, p, labels, size)
+            }
+            return
+        }
+        Box(frame.padding(horizontal = 16.dp, vertical = 12.dp).clickable(actionStartActivity<MainActivity>())) {
             when {
-                mode == WidgetMode.MULTI -> MultiLayout(data, p, labels, small)
+                config.mode == WidgetMode.MULTI -> MultiLayout(data, p, labels, small)
                 small -> SmallLayout(data, p)
                 size.width < WIDE.width -> SquareLayout(data, p, labels)
                 else -> WideLayout(data, p, labels)
@@ -124,11 +130,9 @@ class RingWidget : GlanceAppWidget() {
     }
 }
 
-private fun text(color: ColorProvider, size: Int, weight: FontWeight = FontWeight.Medium) =
+internal fun text(color: ColorProvider, size: Int, weight: FontWeight = FontWeight.Medium) =
     TextStyle(color = color, fontSize = size.sp, fontWeight = weight, fontFamily = FontFamily.SansSerif)
 
-private fun WidgetData.urgent(): Boolean = tone == RingTone.OVERDUE || tone == RingTone.SAFETY
-private fun WidgetData.head(): WidgetHeadline = headline ?: WidgetHeadline("–", "")
 private fun WidgetData.numberSize(): Int = if (head().number.length > 3) 30 else 44
 private fun WidgetData.barPick(): (WidgetColors) -> Color = when {
     urgent() -> { c -> c.err }
@@ -225,7 +229,7 @@ private fun PhaseBar(d: WidgetData, p: WidgetPalette) {
 }
 
 @Composable
-private fun DonePill(label: String, urgent: Boolean, p: WidgetPalette) {
+internal fun DonePill(label: String, urgent: Boolean, p: WidgetPalette) {
     Box(
         GlanceModifier.fillMaxWidth().height(36.dp).cornerRadius(18.dp)
             .background(p.of { if (urgent) it.err else it.hi })
@@ -238,7 +242,7 @@ private fun DonePill(label: String, urgent: Boolean, p: WidgetPalette) {
 
 /** Flat NoBby face: white VectorDrawable masks tinted with the preset's mascot, cheek and ink colours. */
 @Composable
-private fun WidgetFace(mood: MascotMood, p: WidgetPalette, size: Dp) {
+internal fun WidgetFace(mood: MascotMood, p: WidgetPalette, size: Dp) {
     Box(GlanceModifier.size(size)) {
         Image(ImageProvider(R.drawable.widget_nobby_body), null, GlanceModifier.fillMaxSize(), colorFilter = ColorFilter.tint(p.of { it.mascotBody }))
         if (mood != MascotMood.WORRIED && mood != MascotMood.ALERT) {

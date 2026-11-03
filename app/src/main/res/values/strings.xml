@@ -287,6 +287,13 @@
     <string name="widget_mode">Layout</string>
     <string name="widget_mode_single">One big countdown</string>
     <string name="widget_mode_multi">Up to three rows</string>
+    <string name="widget_style">Style</string>
+    <string name="widget_style_ring">Ring</string>
+    <string name="widget_style_classic">Classic</string>
+    <string name="widget_background">Background</string>
+    <string name="widget_background_value">%1$d %%</string>
+    <string name="widget_background_hint" formatted="false">Below 40 % readability depends on your wallpaper.</string>
+    <string name="widget_preview">Preview</string>
     <string name="widget_rows">Rows</string>
     <string name="widget_row_next_any">Next step</string>
     <string name="widget_row_next_remove">Next removal</string>
