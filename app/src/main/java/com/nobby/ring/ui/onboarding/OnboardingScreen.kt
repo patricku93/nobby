@@ -44,6 +44,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nobby.ring.R
+import com.nobby.ring.domain.engine.SetupStatus
 import com.nobby.ring.domain.model.OverdueConfig
 import com.nobby.ring.domain.model.Palette
 import com.nobby.ring.domain.model.ReminderRule
@@ -51,7 +52,6 @@ import com.nobby.ring.domain.model.ScheduleConfig
 import com.nobby.ring.domain.model.ThemeMode
 import com.nobby.ring.domain.model.ThemeSpec
 import com.nobby.ring.ui.components.ButtonTone
-import com.nobby.ring.ui.components.DatePickerField
 import com.nobby.ring.ui.components.NobbyButton
 import com.nobby.ring.ui.components.NobbyCard
 import com.nobby.ring.ui.components.NumberStepper
@@ -79,8 +79,9 @@ data class OnboardingActions(
     val onWear: (Int) -> Unit = {},
     val onPause: (Int) -> Unit = {},
     val onTime: (LocalTime) -> Unit = {},
-    val onAnchorDate: (LocalDate) -> Unit = {},
-    val onAnchorTime: (LocalTime) -> Unit = {},
+    val onStatus: (SetupStatus) -> Unit = {},
+    val onStatusDate: (LocalDate) -> Unit = {},
+    val onStatusTime: (LocalTime) -> Unit = {},
     val onPalette: (Palette) -> Unit = {},
     val onMode: (ThemeMode) -> Unit = {},
 )
@@ -96,7 +97,7 @@ fun OnboardingScreen(onFinished: () -> Unit, viewModel: OnboardingViewModel = hi
             OnboardingActions(
                 onBack = viewModel::back, onNext = viewModel::next, onFinish = viewModel::finish,
                 onWear = viewModel::setWear, onPause = viewModel::setPause, onTime = viewModel::setTime,
-                onAnchorDate = viewModel::setAnchorDate, onAnchorTime = viewModel::setAnchorTime,
+                onStatus = viewModel::setStatus, onStatusDate = viewModel::setStatusDate, onStatusTime = viewModel::setStatusTime,
                 onPalette = viewModel::setPalette, onMode = viewModel::setMode,
             ),
         )
@@ -114,15 +115,15 @@ fun OnboardingContent(state: OnboardingState, actions: OnboardingActions) {
             ) {
                 StepIntro(state.step)
                 when (state.step) {
-                    0 -> RhythmStep(state, actions)
-                    1 -> WhereStep(state, actions)
+                    0 -> StatusStep(state, actions)
+                    1 -> RhythmStep(state, actions)
                     2 -> RemindersStep(state)
                     else -> LookStep(state, actions)
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 if (state.step > 0) NobbyButton(actions.onBack, tone = ButtonTone.TEXT) { Text(stringResource(R.string.action_back)) } else Spacer(Modifier)
-                if (state.step < OnboardingState.STEPS - 1) NobbyButton(actions.onNext) { Text(stringResource(R.string.action_next)) }
+                if (state.step < OnboardingState.STEPS - 1) NobbyButton(actions.onNext, enabled = state.canNext) { Text(stringResource(R.string.action_next)) }
                 else NobbyButton(actions.onFinish, enabled = !state.saving) { Text(stringResource(R.string.action_finish)) }
             }
         }
@@ -144,8 +145,8 @@ private fun StepBars(step: Int) {
 private data class Intro(val title: Int, val body: Int, val mood: MascotMood, val prop: MascotProp, val size: Dp)
 
 private fun introFor(step: Int): Intro = when (step) {
-    0 -> Intro(R.string.onb_rhythm_title, R.string.onb_rhythm_body, MascotMood.HAPPY, MascotProp.WAVE, 84.dp)
-    1 -> Intro(R.string.onb_where_title, R.string.onb_where_body, MascotMood.NEUTRAL, MascotProp.CALENDAR, 80.dp)
+    0 -> Intro(R.string.onb_status_title, R.string.onb_status_body, MascotMood.HAPPY, MascotProp.WAVE, 84.dp)
+    1 -> Intro(R.string.onb_rhythm_title, R.string.onb_rhythm_body, MascotMood.NEUTRAL, MascotProp.CALENDAR, 80.dp)
     2 -> Intro(R.string.onb_reminders_title, R.string.onb_reminders_body, MascotMood.HAPPY, MascotProp.BELL, 80.dp)
     else -> Intro(R.string.onb_look_title, R.string.onb_look_body, MascotMood.HAPPY, MascotProp.PALETTE, 80.dp)
 }
@@ -183,15 +184,6 @@ private fun RhythmStep(state: OnboardingState, actions: OnboardingActions) {
         TimePickerField(state.timeOfDay, actions.onTime, stringResource(R.string.onb_time_of_day))
     }
     InfoNote(stringResource(R.string.onb_safety_hint))
-}
-
-@Composable
-private fun WhereStep(state: OnboardingState, actions: OnboardingActions) {
-    NobbyCard {
-        DatePickerField(state.anchorDate, actions.onAnchorDate, stringResource(R.string.onb_anchor_date_label), Modifier.fillMaxWidth())
-        Spacer(Modifier.height(12.dp))
-        TimePickerField(state.anchorTime, actions.onAnchorTime, stringResource(R.string.onb_anchor_time), Modifier.fillMaxWidth())
-    }
 }
 
 @Composable
@@ -233,7 +225,7 @@ private fun LookStep(state: OnboardingState, actions: OnboardingActions) {
 
 /** Small butter hint (tertiaryContainer; dark: surfaceContainerHigh). */
 @Composable
-private fun InfoNote(text: String) {
+internal fun InfoNote(text: String) {
     val c = MaterialTheme.colorScheme
     val dark = NobbyTheme.extra.dark
     Row(

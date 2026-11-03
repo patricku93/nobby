@@ -17,10 +17,14 @@ sealed interface PhaseChipModel {
     data class OverDays(override val phase: PhaseKind, val days: Int) : PhaseChipModel
     data class OverHours(override val phase: PhaseKind, val hours: Int) : PhaseChipModel
 
+    /** The first ring has not gone in yet: no phase day to count. */
+    data object NotStarted : PhaseChipModel { override val phase: PhaseKind = PhaseKind.PAUSE }
+
     companion object {
         fun from(state: ScheduleState): PhaseChipModel {
             val p = state.position
-            val amount = OverdueAmount.of(state) ?: return inPhase(p.phase, p.dayInPhase, p.phaseLengthDays)
+            val amount = OverdueAmount.of(state)
+                ?: return if (p.started) inPhase(p.phase, p.dayInPhase, p.phaseLengthDays) else NotStarted
             return overdue(p.phase, amount)
         }
 
@@ -39,4 +43,5 @@ fun PhaseChipModel.text(): String = when (this) {
     is PhaseChipModel.InPhase -> stringResource(R.string.phase_day, phase.label(), day, length)
     is PhaseChipModel.OverDays -> plural(R.plurals.phase_over_days, days, phase.label(), days)
     is PhaseChipModel.OverHours -> plural(R.plurals.phase_over_hours, hours, phase.label(), hours)
+    PhaseChipModel.NotStarted -> stringResource(R.string.phase_not_started)
 }

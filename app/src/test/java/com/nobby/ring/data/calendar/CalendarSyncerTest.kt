@@ -99,6 +99,17 @@ class CalendarSyncerTest {
     }
 
     @Test
+    fun `not started yet syncs the first insertion and no removal before it`() = runTest {
+        val start = LocalDateTime(2026, 11, 6, 21, 0)
+        schedule.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), start, 2, firstInsertPending = true))
+        syncer.syncNow().getOrThrow()
+        val entries = source.events.values.sortedBy { it.startAt }
+        assertEquals(start, entries.first().startAt)
+        assertEquals("INSERT@$start", entries.first().eventId)
+        assertTrue(entries.filter { it.eventId.startsWith("REMOVE") }.all { it.startAt > start })
+    }
+
+    @Test
     fun `second sync changes nothing, config change updates in place`() = runTest {
         syncer.syncNow()
         assertEquals(0, syncer.syncNow().getOrThrow())
