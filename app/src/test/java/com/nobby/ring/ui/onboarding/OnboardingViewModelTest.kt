@@ -10,6 +10,7 @@ import com.nobby.ring.data.prefs.ThemeStore
 import com.nobby.ring.data.repo.ReminderRepository
 import com.nobby.ring.domain.NobbyClock
 import com.nobby.ring.domain.model.Palette
+import com.nobby.ring.domain.model.ThemeMode
 import com.nobby.ring.notifications.ScheduleChangeListener
 import com.nobby.ring.notifications.ScheduleChangeNotifier
 import kotlinx.coroutines.CoroutineScope
@@ -69,6 +70,7 @@ class OnboardingViewModelTest {
         vm.setWear(21); vm.setPause(7); vm.setTime(LocalTime(21, 0))
         vm.setAnchorDate(LocalDate(2026, 11, 1)); vm.setAnchorTime(LocalTime(21, 0))
         vm.setPalette(Palette.MATCHA)
+        vm.setMode(ThemeMode.DARK)
         vm.finish()
         dispatcher.scheduler.advanceUntilIdle()
         vm.state.first { it.finished } // DataStore writes complete on a real IO thread; wait for completion
@@ -79,8 +81,17 @@ class OnboardingViewModelTest {
         assertTrue(configStore.onboardingDone.first())
         assertEquals(2, reminders.rules.first().size)
         assertEquals(Palette.MATCHA, themeStore.theme.first().palette)
+        assertEquals(ThemeMode.DARK, themeStore.theme.first().mode)
         assertTrue(vm.state.value.finished)
         assertEquals(1, changes) // the schedule is armed (reminders, widget, calendar) right after onboarding
+    }
+
+    @Test
+    fun `onboarding has four steps`() {
+        val vm = OnboardingViewModel(configStore, reminders, themeStore, notifier, CoroutineScope(dispatcher), clock)
+        repeat(6) { vm.next() }
+        assertEquals(3, vm.state.value.step)
+        assertEquals(4, OnboardingState.STEPS)
     }
 
     @Test

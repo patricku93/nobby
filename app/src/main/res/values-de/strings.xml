@@ -139,11 +139,6 @@
     <string name="onb_look_body">Such dir eine Farbe aus. Die Pause bleibt immer gut zu erkennen.</string>
     <string name="onb_calendar_hint">Kalender-Sync kannst du später in den Einstellungen einschalten.</string>
     <string name="onb_calendar_connect">Kalender verbinden</string>
-    <!-- legacy v1 Onboarding, entfernt in Task 13 -->
-    <string name="onb_welcome_title">Hallo, ich bin NoBby</string>
-    <string name="onb_welcome_body">Ich erinnere dich ans Rausnehmen und Einsetzen, halte deinen Kalender aktuell und melde mich, wenn du was vergisst.</string>
-    <string name="onb_schedule_title">Dein Rhythmus</string>
-    <string name="onb_notifications_permission">Mitteilungen erlauben</string>
 
     <!-- Erinnerungen -->
     <plurals name="reminder_day_before">

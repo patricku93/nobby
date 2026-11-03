@@ -139,11 +139,6 @@
     <string name="onb_look_body">Pick a colour. The break always stays easy to spot.</string>
     <string name="onb_calendar_hint">You can turn on calendar sync later in Settings.</string>
     <string name="onb_calendar_connect">Connect a calendar</string>
-    <!-- legacy v1 onboarding, removed in Task 13 -->
-    <string name="onb_welcome_title">Hi, I\'m NoBby</string>
-    <string name="onb_welcome_body">I remind you when the ring goes out and in, keep your calendar up to date and nudge you if you forget.</string>
-    <string name="onb_schedule_title">Your rhythm</string>
-    <string name="onb_notifications_permission">Allow notifications</string>
 
     <!-- reminders -->
     <plurals name="reminder_day_before">

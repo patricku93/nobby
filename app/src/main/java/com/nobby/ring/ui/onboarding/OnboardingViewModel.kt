@@ -10,6 +10,7 @@ import com.nobby.ring.domain.model.Method
 import com.nobby.ring.domain.model.Palette
 import com.nobby.ring.domain.model.ReminderRule
 import com.nobby.ring.domain.model.ScheduleConfig
+import com.nobby.ring.domain.model.ThemeMode
 import com.nobby.ring.domain.model.ThemeSpec
 import com.nobby.ring.notifications.ScheduleChangeNotifier
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,12 +33,13 @@ data class OnboardingState(
     val anchorDate: LocalDate,
     val anchorTime: LocalTime = LocalTime(21, 0),
     val palette: Palette = Palette.BERRY,
+    val mode: ThemeMode = ThemeMode.SYSTEM,
     val finished: Boolean = false,
     val saving: Boolean = false,
 ) {
     val wearWarning: Boolean get() = wearDays > ScheduleConfig.SAFE_MAX_WEAR
     val pauseWarning: Boolean get() = pauseDays > ScheduleConfig.SAFE_MAX_PAUSE
-    companion object { const val STEPS = 5 }
+    companion object { const val STEPS = 4 }
 }
 
 @HiltViewModel
@@ -60,6 +62,7 @@ class OnboardingViewModel @Inject constructor(
     fun setAnchorDate(date: LocalDate) = _state.update { it.copy(anchorDate = date) }
     fun setAnchorTime(time: LocalTime) = _state.update { it.copy(anchorTime = time) }
     fun setPalette(palette: Palette) = _state.update { it.copy(palette = palette) }
+    fun setMode(mode: ThemeMode) = _state.update { it.copy(mode = mode) }
 
     fun finish() {
         val s = _state.value
@@ -70,7 +73,7 @@ class OnboardingViewModel @Inject constructor(
             runCatching {
                 configStore.save(ScheduleConfig(Method.ring(s.wearDays, s.pauseDays, s.timeOfDay), LocalDateTime(s.anchorDate, s.anchorTime)))
                 reminders.replaceAll(ReminderRule.defaults(s.timeOfDay))
-                themeStore.save(ThemeSpec(palette = s.palette))
+                themeStore.save(ThemeSpec(palette = s.palette, mode = s.mode))
                 configStore.setOnboardingDone()
                 notifier.notifyChanged() // arm reminders, overdue alarm, widget and calendar for the new schedule
             }.onSuccess {
