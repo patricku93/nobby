@@ -250,7 +250,7 @@ class CalendarSyncerTest {
         syncer.syncNow().getOrThrow()
         val lastBefore = syncStore.lastSync.first()
         source.events.clear(); source.calendarOf.clear() // the old calendar and its events died with it
-        source.calendars = listOf(DeviceCalendar(1, "Other", "someone@gmail.com", 0))
+        source.calendars = listOf(DeviceCalendar(1, "Other", "someone@example.com", 0))
 
         val result = syncer.syncNow()
 
@@ -294,5 +294,36 @@ class CalendarSyncerTest {
         assertEquals(ListenableWorker.Result.retry(), CalendarSyncWorker.resultFor(kotlin.Result.failure(IllegalStateException()), 0))
         assertEquals(ListenableWorker.Result.failure(), CalendarSyncWorker.resultFor(kotlin.Result.failure(IllegalStateException()), 3))
         assertEquals(ListenableWorker.Result.success(), CalendarSyncWorker.resultFor(kotlin.Result.success(0), 0))
+    }
+
+    @Test
+    fun `worker gives up on the third run - attempt counts start at 0`() {
+        val boom = kotlin.Result.failure<Int>(IllegalStateException())
+        assertEquals(ListenableWorker.Result.retry(), CalendarSyncWorker.resultFor(boom, 0))
+        assertEquals(ListenableWorker.Result.retry(), CalendarSyncWorker.resultFor(boom, 1))
+        assertEquals(ListenableWorker.Result.failure(), CalendarSyncWorker.resultFor(boom, 2))
+    }
+
+    @Test
+    fun `a sync id assigned after the choice does not make the calendar a different one`() = runTest {
+        source.calendars = listOf(DeviceCalendar(1, "Test", "test@example.com", 0, identity = "test@example.com|LOCAL|Test|"))
+        syncer.syncNow().getOrThrow()
+        assertEquals("test@example.com|LOCAL|Test|", syncStore.calendarIdentity.first())
+
+        source.calendars = listOf(DeviceCalendar(1, "Test", "test@example.com", 0, identity = "test@example.com|LOCAL|Test|abc123"))
+        syncer.syncNow().getOrThrow()
+        assertEquals("test@example.com|LOCAL|Test|abc123", syncStore.calendarIdentity.first())
+
+        // Once a sync id is stored it is part of the identity again.
+        source.calendars = listOf(DeviceCalendar(1, "Test", "test@example.com", 0, identity = "test@example.com|LOCAL|Test|other"))
+        assertTrue(syncer.syncNow().exceptionOrNull() is CalendarUnavailableException)
+    }
+
+    @Test
+    fun `an empty stored sync id still tells another account apart`() = runTest {
+        source.calendars = listOf(DeviceCalendar(1, "Test", "test@example.com", 0, identity = "test@example.com|LOCAL|Test|"))
+        syncer.syncNow().getOrThrow()
+        source.calendars = listOf(DeviceCalendar(1, "Test", "x@example.com", 0, identity = "x@example.com|LOCAL|Test|abc"))
+        assertTrue(syncer.syncNow().exceptionOrNull() is CalendarUnavailableException)
     }
 }

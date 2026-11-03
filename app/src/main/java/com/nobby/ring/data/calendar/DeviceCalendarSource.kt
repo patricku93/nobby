@@ -27,6 +27,13 @@ data class DeviceCalendar(
     val identity: String = "$account|$name",
     val writable: Boolean = true,
 )
+/**
+ * True when a stored identity still describes [current]. An identity stored with an empty trailing _SYNC_ID
+ * ("account|type|name|") means "sync id unknown": a sync id the provider assigns later does not make it another calendar.
+ */
+fun identityMatches(stored: String?, current: String): Boolean =
+    stored == null || stored == current || (stored.endsWith("|") && current.startsWith(stored))
+
 data class FoundEvent(val id: Long, val title: String, val startMillis: Long)
 
 interface CalendarSource {

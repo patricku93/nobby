@@ -233,7 +233,7 @@
     <string name="settings_update_current">You have the latest version.</string>
     <string name="settings_update_available">Version %1$s is available.</string>
     <string name="settings_update_failed">That did not work. Are you online?</string>
-    <string name="settings_update_privacy">NoBby only contacts GitHub to look for new versions and sends no personal data.</string>
+    <string name="settings_update_privacy">NoBby only contacts GitHub to look for new versions. Nothing about you or your schedule is sent.</string>
     <string name="update_banner">NoBby %1$s is available</string>
     <string name="update_action_download">Download</string>
     <string name="update_action_later">Later</string>
@@ -266,6 +266,7 @@
     <string name="calendar_sync_last">Last synced: %1$s</string>
     <string name="calendar_cleanup">Clean up old entries</string>
     <string name="calendar_sync_gone">Your calendar is gone. Pick another one to carry on.</string>
+    <string name="calendar_sync_read_only">NoBby can\'t write to this calendar any more. Pick another one to carry on.</string>
     <string name="calendar_sync_pick_hint">Pick a calendar. NoBby adds nothing until you do.</string>
     <string name="calendar_sync_none">No calendar you can write to was found on this device.</string>
     <string name="cleanup_query">Title contains / regex</string>

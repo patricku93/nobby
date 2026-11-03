@@ -13,6 +13,7 @@ import com.nobby.ring.data.calendar.CalendarUnavailableException
 import com.nobby.ring.data.calendar.CalendarSyncer
 import com.nobby.ring.data.calendar.DeviceCalendar
 import com.nobby.ring.data.calendar.FoundEvent
+import com.nobby.ring.data.calendar.identityMatches
 import com.nobby.ring.data.prefs.CalendarSyncStore
 import com.nobby.ring.di.ApplicationScope
 import com.nobby.ring.domain.NobbyClock
@@ -48,13 +49,18 @@ data class CalendarSettingsUiState(
     val results: List<FoundEvent> = emptyList(),
     val selectedResults: Set<Long> = emptySet(),
     val calendarsLoaded: Boolean = false,
+    /** Calendars that exist but can no longer be written to. */
+    val readOnlyCalendars: List<DeviceCalendar> = emptyList(),
 ) {
     /** Sync is on, but no calendar is chosen yet: nothing is written until one is picked. */
     val needsChoice: Boolean get() = enabled && selectedId == null
     /** The stored calendar vanished from the provider (deleted outside the app, account removed). */
     val selectedMissing: Boolean
         get() = enabled && calendarsLoaded && selectedId != null &&
-            calendars.none { it.id == selectedId && (selectedIdentity == null || it.identity == selectedIdentity) }
+            calendars.none { it.id == selectedId && identityMatches(selectedIdentity, it.identity) }
+    /** The stored calendar still exists but turned read-only (a different message than "gone"). */
+    val selectedReadOnly: Boolean
+        get() = selectedMissing && readOnlyCalendars.any { it.id == selectedId && identityMatches(selectedIdentity, it.identity) }
 }
 
 @HiltViewModel
@@ -81,8 +87,12 @@ class CalendarSettingsViewModel @Inject constructor(
     }
 
     private suspend fun loadCalendars() {
-        runCatching { source.listWritable() }
-            .onSuccess { list -> local.update { it.copy(calendars = list, calendarsLoaded = true) } }
+        runCatching { source.listAll() }
+            .onSuccess { all ->
+                val writable = all.orEmpty().filter { it.writable }
+                val readOnly = all.orEmpty().filterNot { it.writable }
+                local.update { it.copy(calendars = writable, readOnlyCalendars = readOnly, calendarsLoaded = true) }
+            }
             .onFailure { e ->
                 if (e is CancellationException) throw e
                 Log.e("NoBby", "Failed to list writable calendars", e)
@@ -111,7 +121,7 @@ class CalendarSettingsViewModel @Inject constructor(
         guarded("Calendar selection failed") {
             val state = uiState.value
             val picked = local.value.calendars.firstOrNull { it.id == id }
-            val sameChoice = state.selectedId == id && (state.selectedIdentity == null || state.selectedIdentity == picked?.identity)
+            val sameChoice = state.selectedId == id && (state.selectedIdentity == null || (picked != null && identityMatches(state.selectedIdentity, picked.identity)))
             // Tapping the calendar that is already in use (and still there) changes nothing.
             if (sameChoice && state.selectedIdentity != null && picked != null) return@guarded
             // Events already written to the previous calendar (or to one since replaced under the same id) must be

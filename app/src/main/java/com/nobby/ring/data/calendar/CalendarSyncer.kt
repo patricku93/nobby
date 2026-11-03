@@ -62,7 +62,8 @@ class CalendarSyncer @Inject constructor(
             val storedIdentity = syncStore.calendarIdentity.first()
             // Same id, different calendar: the chosen one is gone. Choices stored before identities existed adopt it now.
             if (storedIdentity == null) syncStore.saveIdentity(calendar.identity)
-            else if (storedIdentity != calendar.identity) throw CalendarUnavailableException(calendarId)
+            else if (!identityMatches(storedIdentity, calendar.identity)) throw CalendarUnavailableException(calendarId)
+            else if (storedIdentity != calendar.identity) syncStore.saveIdentity(calendar.identity) // sync id assigned since
             val state = schedule.currentState() ?: return@withLock 0
             val desired = state.pendingEvents.map { e ->
                 CalendarEntry(e.id, titleFor(e.kind), e.plannedAt, 30, CalendarEntry.marker(e.id))

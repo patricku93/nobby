@@ -16,6 +16,7 @@ class CalendarSyncWorker @AssistedInject constructor(
     override suspend fun doWork(): Result = resultFor(syncer.syncNow(), runAttemptCount)
 
     companion object {
+        /** Total runs allowed; runAttemptCount is 0-based. */
         private const val MAX_ATTEMPTS = 3
 
         /** Maps a sync outcome to the WorkManager result: only failures that waiting can fix are retried. */
@@ -27,7 +28,7 @@ class CalendarSyncWorker @AssistedInject constructor(
                 error is CalendarUnavailableException -> Result.failure()
                 // Permission revoked: retrying cannot help until the user grants it again.
                 error is SecurityException -> Result.failure()
-                attempt >= MAX_ATTEMPTS -> Result.failure()
+                attempt >= MAX_ATTEMPTS - 1 -> Result.failure()
                 else -> Result.retry()
             }
         }

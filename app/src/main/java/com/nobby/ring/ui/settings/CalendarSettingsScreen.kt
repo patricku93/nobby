@@ -96,7 +96,11 @@ fun CalendarSettingsScreen(onBack: () -> Unit, onCleanup: () -> Unit, viewModel:
                 Row { OutlinedButton(onClick = { viewModel.syncNow() }, enabled = !ui.needsChoice) { Text(stringResource(R.string.calendar_sync_now)) } }
                 OutlinedButton(onClick = onCleanup, Modifier.padding(top = 16.dp)) { Text(stringResource(R.string.calendar_cleanup)) }
             }
-            val problem = if (ui.selectedMissing) stringResource(R.string.calendar_sync_gone) else ui.error
+            val problem = when {
+                ui.selectedReadOnly -> stringResource(R.string.calendar_sync_read_only)
+                ui.selectedMissing -> stringResource(R.string.calendar_sync_gone)
+                else -> ui.error
+            }
             problem?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
     }

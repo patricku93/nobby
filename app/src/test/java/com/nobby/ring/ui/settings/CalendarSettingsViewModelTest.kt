@@ -136,7 +136,7 @@ class CalendarSettingsViewModelTest {
         assertEquals(4, source.events.size)
         // The calendar was deleted and a different one got id 2; its events died with the old one.
         source.events.clear(); source.calendarOf.clear()
-        val replacement = DeviceCalendar(2, "Neu", "fremd@gmail.com", 0)
+        val replacement = DeviceCalendar(2, "Neu", "fremd@example.com", 0)
         source.calendars = listOf(replacement)
         vm.refreshPermission()
         vm.syncNow().join()
@@ -157,5 +157,22 @@ class CalendarSettingsViewModelTest {
         assertTrue(base.copy(enabled = true).needsChoice)
         assertFalse(base.copy(enabled = true, selectedId = 2).needsChoice)
         assertFalse(base.needsChoice)
+    }
+
+    @Test
+    fun `a calendar that turned read-only is flagged read-only, not just missing`() = runTest {
+        source.calendars = listOf(privat, arbeit)
+        backgroundScope.launch { vm.uiState.collect {} }
+        vm.refreshPermission()
+        vm.select(3).join()
+        source.calendars = listOf(privat, arbeit.copy(writable = false))
+        vm.refreshPermission()
+        val state = awaitState { it.selectedMissing }
+        assertTrue(state.selectedReadOnly)
+
+        source.calendars = listOf(privat)
+        vm.refreshPermission()
+        val gone = awaitState { it.selectedMissing && !it.selectedReadOnly }
+        assertFalse(gone.selectedReadOnly)
     }
 }
