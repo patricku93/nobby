@@ -130,11 +130,11 @@
     <string name="mode_system">System</string>
     <string name="mode_light">Light</string>
     <string name="mode_dark">Dark</string>
-    <string name="palette_rose">Rose</string>
-    <string name="palette_lavender">Lavender</string>
-    <string name="palette_mint">Mint</string>
-    <string name="palette_ocean">Ocean</string>
-    <string name="palette_graphite">Graphite</string>
+    <string name="palette_berry">Berry</string>
+    <string name="palette_lilac">Lilac</string>
+    <string name="palette_peach">Peach</string>
+    <string name="palette_matcha">Matcha</string>
+    <string name="palette_blueberry">Blueberry</string>
     <string name="calendar_sync_enable">Sync to a calendar</string>
     <string name="calendar_sync_choose">Choose calendar</string>
     <string name="calendar_sync_permission">Calendar permission is needed to sync.</string>

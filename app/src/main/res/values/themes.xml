@@ -2,5 +2,6 @@
 <resources>
     <style name="Theme.NoBby" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowBackground">@color/nobby_paper</item>
     </style>
 </resources>

@@ -35,7 +35,7 @@ import com.nobby.ring.R
 import com.nobby.ring.domain.model.Palette
 import com.nobby.ring.domain.model.ThemeMode
 import com.nobby.ring.ui.components.label
-import com.nobby.ring.ui.theme.accent
+import com.nobby.ring.ui.theme.swatch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -55,7 +55,7 @@ fun AppearanceScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltView
                         selected = theme.palette == p,
                         onClick = { viewModel.setTheme(theme.copy(palette = p)) },
                         label = { Text(p.label()) },
-                        leadingIcon = { Box(Modifier.size(16.dp).clip(CircleShape).background(p.accent(false))) },
+                        leadingIcon = { Box(Modifier.size(16.dp).clip(CircleShape).background(p.swatch(false))) },
                     )
                 }
             }

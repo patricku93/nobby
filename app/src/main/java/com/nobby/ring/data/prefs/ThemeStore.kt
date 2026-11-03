@@ -17,7 +17,7 @@ class ThemeStore @Inject constructor(private val dataStore: DataStore<Preference
 
     val theme: Flow<ThemeSpec> = dataStore.data.map { p ->
         ThemeSpec(
-            palette = p[paletteKey]?.let { runCatching { Palette.valueOf(it) }.getOrNull() } ?: Palette.ROSE,
+            palette = Palette.fromStored(p[paletteKey]),
             mode = p[modeKey]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
         )
     }

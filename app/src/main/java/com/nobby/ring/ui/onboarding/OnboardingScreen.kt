@@ -48,7 +48,7 @@ import com.nobby.ring.ui.components.NumberStepper
 import com.nobby.ring.ui.components.TimePickerField
 import com.nobby.ring.ui.components.formatTime
 import com.nobby.ring.ui.components.label
-import com.nobby.ring.ui.theme.accent
+import com.nobby.ring.ui.theme.swatch
 
 @Composable
 fun OnboardingScreen(onFinished: () -> Unit, viewModel: OnboardingViewModel = hiltViewModel()) {
@@ -143,7 +143,7 @@ private fun LookStep(state: OnboardingState, vm: OnboardingViewModel) {
                     selected = state.palette == p,
                     onClick = { vm.setPalette(p) },
                     label = { Text(p.label()) },
-                    leadingIcon = { Box(Modifier.size(16.dp).clip(CircleShape).background(p.accent(false))) },
+                    leadingIcon = { Box(Modifier.size(16.dp).clip(CircleShape).background(p.swatch(false))) },
                 )
             }
         }

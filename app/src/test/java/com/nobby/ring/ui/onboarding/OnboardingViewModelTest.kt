@@ -68,7 +68,7 @@ class OnboardingViewModelTest {
         val vm = OnboardingViewModel(configStore, reminders, themeStore, notifier, CoroutineScope(dispatcher), clock)
         vm.setWear(21); vm.setPause(7); vm.setTime(LocalTime(21, 0))
         vm.setAnchorDate(LocalDate(2026, 11, 1)); vm.setAnchorTime(LocalTime(21, 0))
-        vm.setPalette(Palette.MINT)
+        vm.setPalette(Palette.MATCHA)
         vm.finish()
         dispatcher.scheduler.advanceUntilIdle()
         vm.state.first { it.finished } // DataStore writes complete on a real IO thread; wait for completion
@@ -78,7 +78,7 @@ class OnboardingViewModelTest {
         assertEquals(21, config.method.wearDays)
         assertTrue(configStore.onboardingDone.first())
         assertEquals(2, reminders.rules.first().size)
-        assertEquals(Palette.MINT, themeStore.theme.first().palette)
+        assertEquals(Palette.MATCHA, themeStore.theme.first().palette)
         assertTrue(vm.state.value.finished)
         assertEquals(1, changes) // the schedule is armed (reminders, widget, calendar) right after onboarding
     }

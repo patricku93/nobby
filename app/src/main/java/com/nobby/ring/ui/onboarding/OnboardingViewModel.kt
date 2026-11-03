@@ -31,7 +31,7 @@ data class OnboardingState(
     val timeOfDay: LocalTime = LocalTime(21, 0),
     val anchorDate: LocalDate,
     val anchorTime: LocalTime = LocalTime(21, 0),
-    val palette: Palette = Palette.ROSE,
+    val palette: Palette = Palette.BERRY,
     val finished: Boolean = false,
     val saving: Boolean = false,
 ) {

@@ -47,7 +47,7 @@ import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.ThemeMode
 import com.nobby.ring.domain.model.WidgetMode
 import com.nobby.ring.notifications.ScheduleChangeNotifier
-import com.nobby.ring.ui.theme.accent
+import com.nobby.ring.ui.theme.swatch
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -106,7 +106,7 @@ class RingWidget : GlanceAppWidget() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.SYSTEM -> (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
             }
-            val accent = theme.palette.accent(dark)
+            val accent = theme.palette.swatch(dark)
             val bg = if (dark) Color(0xFF1C1C1E) else Color(0xFFFFFFFF)
             val fg = if (dark) Color(0xFFF2F2F2) else Color(0xFF1C1C1E)
             WidgetContent(data, config.mode, accent, bg, fg)

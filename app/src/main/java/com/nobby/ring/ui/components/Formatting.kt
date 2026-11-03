@@ -41,11 +41,11 @@ import kotlin.time.Duration
 
 @Composable fun Palette.label(): String = stringResource(
     when (this) {
-        Palette.ROSE -> R.string.palette_rose
-        Palette.LAVENDER -> R.string.palette_lavender
-        Palette.MINT -> R.string.palette_mint
-        Palette.OCEAN -> R.string.palette_ocean
-        Palette.GRAPHITE -> R.string.palette_graphite
+        Palette.BERRY -> R.string.palette_berry
+        Palette.LILAC -> R.string.palette_lilac
+        Palette.PEACH -> R.string.palette_peach
+        Palette.MATCHA -> R.string.palette_matcha
+        Palette.BLUEBERRY -> R.string.palette_blueberry
     },
 )
 

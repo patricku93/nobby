@@ -112,11 +112,11 @@
     <string name="mode_system">System</string>
     <string name="mode_light">Hell</string>
     <string name="mode_dark">Dunkel</string>
-    <string name="palette_rose">Rosé</string>
-    <string name="palette_lavender">Lavendel</string>
-    <string name="palette_mint">Minze</string>
-    <string name="palette_ocean">Ozean</string>
-    <string name="palette_graphite">Graphit</string>
+    <string name="palette_berry">Beere</string>
+    <string name="palette_lilac">Flieder</string>
+    <string name="palette_peach">Pfirsich</string>
+    <string name="palette_matcha">Matcha</string>
+    <string name="palette_blueberry">Blaubeere</string>
     <string name="calendar_sync_enable">Mit Kalender synchronisieren</string>
     <string name="calendar_sync_choose">Kalender wählen</string>
     <string name="calendar_sync_permission">Für den Sync wird die Kalender-Berechtigung benötigt.</string>
