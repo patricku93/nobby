@@ -31,9 +31,12 @@ object ConfirmAction {
     /**
      * Policy for a one-tap confirmation without the dialog (notification / widget Done): a REMOVE (or SWAP) at least one
      * day late uses SHIFT, everything else KEEP. A late removal keeps the usual full break; a late insertion keeps the
-     * planned removal.
+     * planned removal. The first ring of a schedule that had not started uses SHIFT: there is no rhythm to keep, so a
+     * late first insertion starts the wear phase at the real time instead of cutting it short (within the tolerance
+     * the planned time is still kept).
      */
     fun quickConfirmPolicy(event: ScheduledEvent, confirmedAt: LocalDateTime): ShiftPolicy {
+        if (event.cycleIndex == ScheduleEngine.FIRST_INSERT_CYCLE) return ShiftPolicy.SHIFT
         val late = confirmedAt.toInstant(tz) - event.plannedAt.toInstant(tz)
         return if (event.kind != EventKind.INSERT && late >= 1.days) ShiftPolicy.SHIFT else ShiftPolicy.KEEP
     }

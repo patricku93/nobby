@@ -166,3 +166,39 @@ class RestartAfterBreakTest {
         assertTrue(OverdueCalculator.pauseBreached(removedAt, LocalDateTime(2026, 10, 31, 10, 1)))
     }
 }
+
+/** A first ring confirmed late: there is no rhythm to keep, so a one-tap Done starts the cycle at the real time (M2). */
+class LateFirstInsertionTest {
+    private val start = LocalDateTime(2026, 11, 6, 21, 0)
+    private val config = ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), start, horizonMonths = 3, firstInsertPending = true)
+    private val first = ScheduleEngine.generate(config).first()
+    private val late = LocalDateTime(2026, 11, 8, 9, 0)
+
+    @Test
+    fun `a one-tap Done on a late first insertion shifts the start to the real time`() {
+        assertEquals(ShiftPolicy.SHIFT, ConfirmAction.quickConfirmPolicy(first, late))
+        val r = ConfirmAction.confirm(config, first, emptyList(), late, ConfirmAction.quickConfirmPolicy(first, late))
+        assertEquals(late, r.config.anchor)
+        assertEquals(LocalDateTime(2026, 11, 29, 21, 0), ScheduleEngine.generate(r.config).first().plannedAt) // full 21 days
+    }
+
+    @Test
+    fun `an on-time one-tap Done keeps the planned start`() {
+        val onTime = LocalDateTime(2026, 11, 6, 21, 30)
+        val r = ConfirmAction.confirm(config, first, emptyList(), onTime, ConfirmAction.quickConfirmPolicy(first, onTime))
+        assertEquals(start, r.config.anchor)
+    }
+
+    @Test
+    fun `in the dialog KEEP keeps the planned start and SHIFT moves it`() {
+        assertEquals(start, ConfirmAction.confirm(config, first, emptyList(), late, ShiftPolicy.KEEP).config.anchor)
+        assertEquals(late, ConfirmAction.confirm(config, first, emptyList(), late, ShiftPolicy.SHIFT).config.anchor)
+    }
+
+    @Test
+    fun `a later insertion still keeps the rhythm on one tap`() {
+        val started = config.copy(firstInsertPending = false)
+        val insert = ScheduleEngine.generate(started).first { it.kind == EventKind.INSERT }
+        assertEquals(ShiftPolicy.KEEP, ConfirmAction.quickConfirmPolicy(insert, LocalDateTime(2026, 12, 6, 9, 0)))
+    }
+}
