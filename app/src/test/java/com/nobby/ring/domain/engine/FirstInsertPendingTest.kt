@@ -109,3 +109,60 @@ class FirstInsertPendingTest {
         assertEquals(LocalDateTime(2026, 12, 4, 21, 0), insert.plannedAt)
     }
 }
+
+/** "Pause already over": the new ring's insertion follows a removal logged at its real time. */
+class RestartAfterBreakTest {
+    private val method = Method.ring(21, 7, LocalTime(21, 0))
+    private val removedAt = LocalDateTime(2026, 10, 24, 9, 0)
+    private val removal = EventLog(eventId(EventKind.REMOVE, removedAt), EventKind.REMOVE, removedAt, removedAt)
+
+    private fun restart(start: LocalDateTime) = ScheduleConfig(method, start, horizonMonths = 3, firstInsertPending = true)
+
+    @Test
+    fun `a break already longer than 7 days counts before the new ring is due`() {
+        val start = LocalDateTime(2026, 11, 3, 10, 1)
+        val config = restart(start)
+        val events = ScheduleEngine.generate(config)
+        val now = LocalDateTime(2026, 11, 3, 10, 0, 30)
+        assertNull(OverdueCalculator.overdue(config, events, listOf(removal), now))
+        assertTrue(OverdueCalculator.breakBreached(events, listOf(removal), now))
+    }
+
+    @Test
+    fun `a missed new ring after a long break is overdue with the pause safety breach`() {
+        val config = restart(LocalDateTime(2026, 11, 3, 10, 1))
+        val o = OverdueCalculator.overdue(config, ScheduleEngine.generate(config), listOf(removal), LocalDateTime(2026, 11, 3, 12, 0))!!
+        assertTrue(o.safetyBreached)
+    }
+
+    @Test
+    fun `the break is measured from the logged removal, within 7 days nothing is breached`() {
+        val recent = LocalDateTime(2026, 10, 30, 21, 0)
+        val log = EventLog(eventId(EventKind.REMOVE, recent), EventKind.REMOVE, recent, recent)
+        val config = restart(LocalDateTime(2026, 11, 5, 21, 0))
+        val events = ScheduleEngine.generate(config)
+        assertFalse(OverdueCalculator.breakBreached(events, listOf(log), LocalDateTime(2026, 11, 3, 10, 0)))
+        assertFalse(OverdueCalculator.overdue(config, events, listOf(log), LocalDateTime(2026, 11, 6, 21, 0))!!.safetyBreached)
+        assertTrue(OverdueCalculator.overdue(config, events, listOf(log), LocalDateTime(2026, 11, 6, 22, 1))!!.safetyBreached)
+    }
+
+    @Test
+    fun `a genuine first ring has no break to breach`() {
+        val config = restart(LocalDateTime(2026, 11, 3, 10, 1))
+        assertFalse(OverdueCalculator.breakBreached(ScheduleEngine.generate(config), emptyList(), LocalDateTime(2027, 1, 1, 10, 0)))
+    }
+
+    @Test
+    fun `once the new ring is in the old break no longer counts`() {
+        val start = LocalDateTime(2026, 11, 3, 10, 1)
+        val config = restart(start)
+        val logs = listOf(removal, EventLog(ScheduleEngine.firstInsertId(config), EventKind.INSERT, start, start))
+        assertFalse(OverdueCalculator.breakBreached(ScheduleEngine.generate(config), logs, LocalDateTime(2026, 11, 4, 10, 0)))
+    }
+
+    @Test
+    fun `the break check matches the overdue rule with its 60-minute grace`() {
+        assertFalse(OverdueCalculator.pauseBreached(removedAt, LocalDateTime(2026, 10, 31, 10, 0)))
+        assertTrue(OverdueCalculator.pauseBreached(removedAt, LocalDateTime(2026, 10, 31, 10, 1)))
+    }
+}

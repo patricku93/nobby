@@ -92,6 +92,15 @@ class ScheduleRepository @Inject constructor(
         configStore.save(result.config)
     }
 
+    /**
+     * Onboarding's start: writes the setup's log rows (a confirmed or a real removal) and then its config in one locked
+     * step, the same order as [confirm], so no re-plan in between sees the removal as overdue (M3).
+     */
+    suspend fun startWith(config: ScheduleConfig, logs: List<EventLog>) = writeLock.withLock {
+        if (logs.isNotEmpty()) eventLogDao.upsert(logs.map(::toEntity))
+        configStore.save(config)
+    }
+
     fun build(config: ScheduleConfig, logs: List<EventLog>, now: LocalDateTime): ScheduleState = buildState(config, logs, now)
 
     private fun toDomain(e: EventLogEntity) = EventLog(

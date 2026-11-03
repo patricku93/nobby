@@ -262,4 +262,16 @@ class ScheduleRepositoryTest {
         assertNull(s.overdue)
         assertEquals(0, db.eventLogDao().allOnce().size)
     }
+
+    @Test
+    fun `startWith saves the setup's removal and config together`() = runTest {
+        val removedAt = LocalDateTime(2026, 11, 20, 21, 0)
+        val config = ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 10, 30, 21, 0))
+        val removeId = com.nobby.ring.domain.engine.CycleCalculator.currentRemoveId(config)
+        repo.startWith(config, listOf(com.nobby.ring.domain.model.EventLog(removeId, EventKind.REMOVE, removedAt, removedAt)))
+        val state = repo.state.filterNotNull().first()
+        assertEquals(PhaseKind.PAUSE, state.position.phase)
+        assertEquals(EventKind.INSERT, state.nextEvent!!.kind)
+        assertNull(state.overdue)
+    }
 }

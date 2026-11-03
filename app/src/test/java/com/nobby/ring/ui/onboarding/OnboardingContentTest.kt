@@ -24,6 +24,7 @@ import com.nobby.ring.ui.mascot.MascotProp
 import com.nobby.ring.ui.mascot.MascotPropKey
 import com.nobby.ring.ui.theme.NobbyTheme
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -104,7 +105,7 @@ class OnboardingContentTest {
 
     @Test
     fun `a break that is already over says so and asks for the insertion`() {
-        show(base.copy(status = SetupStatus.NOT_STARTED, pauseOver = true))
+        show(base.copy(status = SetupStatus.NOT_STARTED, removedAt = LocalDateTime(2026, 10, 30, 21, 0)))
         compose.onNodeWithText("Your break is already over – when will you insert the new ring?").assertExists()
         compose.onNodeWithText("When will you insert the new ring?").performScrollTo().assertExists()
     }
@@ -125,5 +126,21 @@ class OnboardingContentTest {
         compose.onNodeWithTag("preset_PEACH").performScrollTo().performClick()
         assertEquals(Palette.PEACH, picked)
         compose.onNodeWithText("Let's go").assertExists()
+    }
+
+    @Test
+    fun `a new ring planned more than 7 days after the removal shows the protection hint`() {
+        // Removed 24.10. 09:00, new ring 01.11. 21:00: 8.5 days without a ring.
+        show(base.copy(status = SetupStatus.NOT_STARTED, removedAt = LocalDateTime(2026, 10, 24, 9, 0)))
+        compose.onNodeWithText(
+            "By then the ring will have been out for more than 7 days. Protection may be reduced — check your product leaflet; " +
+                "you may need backup contraception. Ask your doctor or pharmacist.",
+        ).performScrollTo().assertExists()
+    }
+
+    @Test
+    fun `a break within 7 days shows no protection hint`() {
+        show(base.copy(status = SetupStatus.NOT_STARTED, removedAt = LocalDateTime(2026, 10, 30, 21, 0)))
+        compose.onNodeWithText("By then the ring", substring = true).assertDoesNotExist()
     }
 }

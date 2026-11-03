@@ -233,13 +233,15 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun `ring out with the pause already over asks for the planned insertion instead`() = runTest(dispatcher) {
-        val vm = vm()
-        vm.answer(SetupStatus.RING_OUT, LocalDateTime(2026, 10, 25, 21, 0))
+    fun `ring out with the pause already over asks for the new ring and keeps the real removal`() = runTest(dispatcher) {
+        val vm = vm() // 05.11. 10:00
+        val removedAt = LocalDateTime(2026, 10, 25, 21, 0)
+        vm.answer(SetupStatus.RING_OUT, removedAt)
         vm.next()
         val st = vm.state.value
         assertEquals(0, st.step)
         assertTrue(st.pauseOver)
+        assertEquals(removedAt, st.removedAt)
         assertEquals(SetupStatus.NOT_STARTED, st.status)
 
         vm.setStatusDate(LocalDate(2026, 11, 6)); vm.setStatusTime(LocalTime(21, 0))
@@ -249,10 +251,54 @@ class OnboardingViewModelTest {
         assertFalse(s.position.started)
         assertEquals(EventKind.INSERT, s.nextEvent!!.kind)
         assertEquals(LocalDateTime(2026, 11, 6, 21, 0), s.nextEvent!!.plannedAt)
-        assertTrue(s.logs.isEmpty())
+        val removal = s.logs.single()
+        assertEquals(EventKind.REMOVE, removal.kind)
+        assertEquals(removedAt, removal.confirmedAt)
         assertNull(s.overdue)
     }
 
+    @Test
+    fun `pause over after 10 days offers the next minute and shows the protection hint`() = runTest(dispatcher) {
+        val vm = vm() // 05.11. 10:00
+        vm.answer(SetupStatus.RING_OUT, LocalDateTime(2026, 10, 26, 10, 0))
+        vm.next()
+        val st = vm.state.value
+        assertEquals(LocalDateTime(2026, 11, 5, 10, 1), st.statusAt)
+        assertNull(st.statusIssue)
+        assertTrue(st.pauseSafety)
+
+        vm.next()
+        val s = vm.finishAndLoad()
+        assertNull(s.overdue)
+        assertTrue(com.nobby.ring.ui.ring.RingModel.from(s).safety) // Home warns before the new ring is due
+        assertTrue(overdueAlarmAt()!! > millis(nowValue))
+        val late = schedule.build(s.config, s.logs, LocalDateTime(2026, 11, 5, 11, 0))
+        assertTrue(late.overdue!!.safetyBreached) // and the missed new ring is a pause safety breach
+    }
+
+    @Test
+    fun `pause over within 7 days has no hint until the planned start makes the break longer`() {
+        val vm = vm() // 05.11. 10:00
+        vm.setPause(4)
+        vm.answer(SetupStatus.RING_OUT, LocalDateTime(2026, 10, 31, 10, 0))
+        vm.next()
+        assertTrue(vm.state.value.pauseOver)
+        assertFalse(vm.state.value.pauseSafety)
+        vm.setStatusDate(LocalDate(2026, 11, 7)); vm.setStatusTime(LocalTime(21, 0))
+        assertTrue(vm.state.value.pauseSafety)
+    }
+
+    @Test
+    fun `finish moves an untouched pause-over start along with the clock instead of rejecting it`() = runTest(dispatcher) {
+        val vm = vm() // 05.11. 10:00
+        vm.answer(SetupStatus.RING_OUT, LocalDateTime(2026, 10, 25, 21, 0))
+        vm.next()
+        vm.next()
+        nowValue = LocalDateTime(2026, 11, 5, 10, 5, 12)
+        val s = vm.finishAndLoad()
+        assertEquals(LocalDateTime(2026, 11, 5, 10, 6), s.nextEvent!!.plannedAt)
+        assertNull(s.overdue)
+    }
     @Test
     fun `a pause shortened later that is then over sends finish back to the status step`() = runTest(dispatcher) {
         val vm = vm()

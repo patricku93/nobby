@@ -7,6 +7,7 @@ import com.nobby.ring.data.repo.ReminderRepository
 import com.nobby.ring.data.repo.ScheduleRepository
 import com.nobby.ring.di.ApplicationScope
 import com.nobby.ring.domain.NobbyClock
+import com.nobby.ring.domain.engine.OverdueCalculator
 import com.nobby.ring.domain.engine.SetupPlan
 import com.nobby.ring.domain.engine.SetupStart
 import com.nobby.ring.domain.engine.SetupStatus
@@ -30,7 +31,10 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.atTime
 import kotlinx.datetime.minus
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
 /** Why the status step's date and time cannot be used (shown inline; Next stays off). */
@@ -46,8 +50,11 @@ data class OnboardingState(
     /** True once the user picked a date or time, so a later answer change no longer replaces them with defaults. */
     val statusEdited: Boolean = false,
     val statusIssue: StatusIssue? = null,
-    /** "Ring is out" was answered but the break is already over: the step now asks for the planned insertion. */
-    val pauseOver: Boolean = false,
+    /**
+     * "Ring is out" was answered but the break is already over: the removal the user gave. The step now asks for the
+     * new ring; the removal is logged at this real time, so the break since then counts for the safety check.
+     */
+    val removedAt: LocalDateTime? = null,
     val wearDays: Int = 21,
     val pauseDays: Int = 7,
     val timeOfDay: LocalTime = LocalTime(21, 0),
@@ -57,6 +64,9 @@ data class OnboardingState(
     val saving: Boolean = false,
 ) {
     val statusAt: LocalDateTime get() = LocalDateTime(statusDate, statusTime)
+    val pauseOver: Boolean get() = removedAt != null
+    /** The planned new ring makes the break since the removal longer than the safe maximum (the overdue rule). */
+    val pauseSafety: Boolean get() = removedAt?.let { OverdueCalculator.pauseBreached(it, statusAt) } == true
     val canNext: Boolean get() = step != 0 || (status != null && statusIssue == null)
     val wearWarning: Boolean get() = wearDays > ScheduleConfig.SAFE_MAX_WEAR
     val pauseWarning: Boolean get() = pauseDays > ScheduleConfig.SAFE_MAX_PAUSE
@@ -96,7 +106,8 @@ class OnboardingViewModel @Inject constructor(
     fun setMode(mode: ThemeMode) = _state.update { it.copy(mode = mode) }
 
     fun setStatus(status: SetupStatus) = _state.update { s ->
-        val picked = s.copy(status = status, pauseOver = false)
+        // Picking the same answer again keeps a pause-over removal; another answer drops it.
+        val picked = s.copy(status = status, removedAt = s.removedAt.takeIf { status == s.status })
         checked(if (s.statusEdited) picked else withDefaults(picked))
     }
 
@@ -104,13 +115,15 @@ class OnboardingViewModel @Inject constructor(
     fun setStatusTime(time: LocalTime) = _state.update { checked(it.copy(statusTime = time, statusEdited = true)) }
 
     /**
-     * Saves the schedule computed from the status answer with the FINAL lengths. A "ring is out" start then confirms
-     * that cycle's removal through ScheduleRepository, exactly like a confirmation in the app. If the answer no longer
-     * fits (the break is over with the chosen pause, or time moved past the planned start), it goes back to step 1.
+     * Saves the schedule computed from the status answer with the FINAL lengths, with its removal log (a "ring is out"
+     * confirmation or a pause-over removal) in the same locked write. If the answer no longer fits (the break is over
+     * with the chosen pause, or time moved past the planned start), it goes back to step 1.
      */
     fun finish() {
+        if (_state.value.saving || _state.value.finished) return
+        // An untouched "new ring" preset follows the clock, so time spent on the later steps does not make it past.
+        if (_state.value.pauseOver && !_state.value.statusEdited) _state.update { nextMinute(it) }
         val s = _state.value
-        if (s.saving || s.finished) return
         val plan = planFor(s)
         if (plan !is SetupPlan.Ready) {
             _state.update { if (plan == SetupPlan.PauseOver) pauseIsOver(it) else checked(it).copy(step = 0) }
@@ -130,8 +143,7 @@ class OnboardingViewModel @Inject constructor(
     }
 
     private suspend fun save(s: OnboardingState, plan: SetupPlan.Ready) {
-        configStore.save(plan.config)
-        plan.removal?.let { schedule.confirm(it.eventId, it.confirmedAt, it.policy) }
+        schedule.startWith(plan.config, plan.logs)
         reminders.replaceAll(ReminderRule.defaults(s.timeOfDay))
         themeStore.save(ThemeSpec(palette = s.palette, mode = s.mode))
         configStore.setOnboardingDone()
@@ -139,7 +151,7 @@ class OnboardingViewModel @Inject constructor(
     }
 
     private fun planFor(s: OnboardingState): SetupPlan? =
-        s.status?.let { SetupStart.plan(it, s.method, s.statusAt, clock.now()) }
+        s.status?.let { SetupStart.plan(it, s.method, s.statusAt, clock.now(), s.removedAt) }
 
     private fun checked(s: OnboardingState): OnboardingState {
         val issue = when (planFor(s)) {
@@ -150,9 +162,20 @@ class OnboardingViewModel @Inject constructor(
         return s.copy(statusIssue = issue)
     }
 
-    /** The break is over: ask for the planned insertion, as for "not started yet", with the notice shown. */
-    private fun pauseIsOver(s: OnboardingState): OnboardingState =
-        checked(withDefaults(s.copy(step = 0, status = SetupStatus.NOT_STARTED, statusEdited = false))).copy(pauseOver = true)
+    /**
+     * The break is over: ask for the new ring, with the notice shown, and keep the given removal. The preset is the next
+     * full minute: the ring should go back in as soon as possible, never a day later at the routine time.
+     */
+    private fun pauseIsOver(s: OnboardingState): OnboardingState {
+        val removedAt = if (s.status == SetupStatus.RING_OUT) s.statusAt else s.removedAt
+        return checked(nextMinute(s.copy(step = 0, status = SetupStatus.NOT_STARTED, statusEdited = false, removedAt = removedAt)))
+    }
+
+    private fun nextMinute(s: OnboardingState): OnboardingState {
+        val now = clock.now()
+        val at = LocalDateTime(now.date, LocalTime(now.hour, now.minute)).toInstant(TimeZone.UTC).plus(1, DateTimeUnit.MINUTE).toLocalDateTime(TimeZone.UTC)
+        return s.copy(statusDate = at.date, statusTime = at.time)
+    }
 
     /**
      * Routine time today, moved a day back for "in" / "out" when that is still ahead, or a day on for "not started"

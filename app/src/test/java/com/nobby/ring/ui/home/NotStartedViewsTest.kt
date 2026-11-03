@@ -70,3 +70,28 @@ class NotStartedViewsTest {
         assertEquals(start, w.nextAt)
     }
 }
+
+/** "Pause already over" with a break of more than 7 days: Home warns before the new ring is due. */
+class RestartAfterLongBreakViewsTest {
+    private val removedAt = LocalDateTime(2026, 10, 24, 9, 0)
+    private val removal = com.nobby.ring.domain.model.EventLog(
+        com.nobby.ring.domain.model.eventId(EventKind.REMOVE, removedAt), EventKind.REMOVE, removedAt, removedAt,
+    )
+    private val config = ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 3, 21, 0), horizonMonths = 3, firstInsertPending = true)
+
+    @Test
+    fun `the ring shows the protection notice while the new ring is still ahead`() {
+        val state = ScheduleRepository.buildState(config, listOf(removal), LocalDateTime(2026, 11, 3, 10, 0))
+        assertNull(state.overdue)
+        val ring = RingModel.from(state)
+        org.junit.Assert.assertTrue(ring.safety)
+        assertEquals(RingLabel.TODAY, ring.label)
+    }
+
+    @Test
+    fun `a short break shows no notice`() {
+        val recent = LocalDateTime(2026, 10, 31, 21, 0)
+        val log = removal.copy(eventId = com.nobby.ring.domain.model.eventId(EventKind.REMOVE, recent), plannedAt = recent, confirmedAt = recent)
+        assertFalse(RingModel.from(ScheduleRepository.buildState(config, listOf(log), LocalDateTime(2026, 11, 3, 10, 0))).safety)
+    }
+}

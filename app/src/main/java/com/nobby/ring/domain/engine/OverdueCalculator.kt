@@ -33,18 +33,38 @@ object OverdueCalculator {
         val delay = between(pending.plannedAt, now)
         val breached = when (pending.kind) {
             EventKind.REMOVE, EventKind.SWAP -> between(pending.cycleStart, now) > ScheduleConfig.SAFE_MAX_WEAR.days + grace
-            // The very first ring (not started yet) ends no break, so there is no pause to exceed.
-            EventKind.INSERT -> pending.cycleIndex != ScheduleEngine.FIRST_INSERT_CYCLE && run {
+            // The very first ring ends no break; a new ring after "pause already over" ends the one logged before it.
+            EventKind.INSERT -> if (pending.cycleIndex == ScheduleEngine.FIRST_INSERT_CYCLE) {
+                breakBreached(events, logs, now)
+            } else {
                 // By id, the same rule as CycleCalculator / nextPending (D9): a removal carried by Settings > Apply
                 // keeps its original plannedAt, which can lie before this cycle's start.
                 val removeId = events.firstOrNull { it.kind == EventKind.REMOVE && it.cycleIndex == pending.cycleIndex }?.id
                 val removedAt = logs.firstOrNull { it.eventId == removeId }?.confirmedAt
                     ?: config.removeTimeFor(pending.cycleStart)
-                between(removedAt, now) > ScheduleConfig.SAFE_MAX_PAUSE.days + grace
+                pauseBreached(removedAt, now)
             }
         }
         return OverdueInfo(pending, delay, breached)
     }
+
+    /** The pause safety threshold: a break from [removedAt] to [at] longer than [ScheduleConfig.SAFE_MAX_PAUSE] days plus the grace. */
+    fun pauseBreached(removedAt: LocalDateTime, at: LocalDateTime): Boolean =
+        between(removedAt, at) > ScheduleConfig.SAFE_MAX_PAUSE.days + grace
+
+    /**
+     * The removal logged before a pending first insertion: the real removal of a schedule restarted after "pause
+     * already over". Null for a genuine first ring (nothing logged before it) and once that insertion is logged.
+     */
+    fun removalBeforeStart(events: List<ScheduledEvent>, logs: List<EventLog>): LocalDateTime? {
+        val first = events.firstOrNull { it.cycleIndex == ScheduleEngine.FIRST_INSERT_CYCLE } ?: return null
+        if (logs.any { it.eventId == first.id }) return null
+        return logs.filter { it.kind == EventKind.REMOVE && it.confirmedAt <= first.plannedAt }.maxOfOrNull { it.confirmedAt }
+    }
+
+    /** While a new ring is still to go in, the break since the logged removal already exceeds the safety threshold. */
+    fun breakBreached(events: List<ScheduledEvent>, logs: List<EventLog>, now: LocalDateTime): Boolean =
+        removalBeforeStart(events, logs)?.let { pauseBreached(it, now) } == true
 
     private val grace: Duration = ConfirmAction.CONFIRM_TOLERANCE_MINUTES.minutes
 

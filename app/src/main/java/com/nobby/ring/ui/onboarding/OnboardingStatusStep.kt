@@ -52,6 +52,15 @@ internal fun StatusStep(state: OnboardingState, actions: OnboardingActions) {
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
+        // Pause already over and the new ring makes the break longer than 7 days: the same safety line as the overdue card.
+        if (state.pauseSafety && state.statusIssue == null) {
+            Text(
+                stringResource(R.string.onb_status_pause_safety),
+                Modifier.padding(top = 8.dp),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
     }
 }
 

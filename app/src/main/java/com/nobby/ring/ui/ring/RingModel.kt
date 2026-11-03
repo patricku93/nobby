@@ -1,5 +1,6 @@
 package com.nobby.ring.ui.ring
 
+import com.nobby.ring.domain.engine.OverdueCalculator
 import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.PhaseKind
 import com.nobby.ring.domain.model.ScheduleState
@@ -32,6 +33,8 @@ data class RingModel(
             val next = state.nextEvent
             val days = state.daysUntilNext
             val overdue = state.overdue
+            // A new ring still ahead after a break that is already longer than 7 days ("pause already over").
+            val waiting = OverdueCalculator.breakBreached(state.events, state.logs, state.now)
             return when {
                 overdue != null -> {
                     val amount = OverdueAmount.of(overdue.delay)
@@ -50,9 +53,9 @@ data class RingModel(
                         safety = overdue.safetyBreached,
                     )
                 }
-                next == null || days == null -> RingModel(calm, calmMood, beads, doneInPhase, null, RingLabel.NONE, null, false)
-                days <= 0 -> RingModel(RingTone.DUE, MascotMood.NEUTRAL, beads, beads, null, RingLabel.TODAY, next, false)
-                else -> RingModel(calm, calmMood, beads, doneInPhase, days, labelFor(next.kind), next, false)
+                next == null || days == null -> RingModel(calm, calmMood, beads, doneInPhase, null, RingLabel.NONE, null, waiting)
+                days <= 0 -> RingModel(RingTone.DUE, MascotMood.NEUTRAL, beads, beads, null, RingLabel.TODAY, next, waiting)
+                else -> RingModel(calm, calmMood, beads, doneInPhase, days, labelFor(next.kind), next, waiting)
             }
         }
 

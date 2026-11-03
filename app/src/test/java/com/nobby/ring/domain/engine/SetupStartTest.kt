@@ -17,12 +17,8 @@ class SetupStartTest {
 
     private fun ready(plan: SetupPlan) = plan as SetupPlan.Ready
 
-    /** What the repository ends up with: the plan's config, then the removal confirmed through ConfirmAction. */
-    private fun saved(plan: SetupPlan.Ready): ConfirmResult {
-        val r = plan.removal ?: return ConfirmResult(plan.config, emptyList())
-        val event = ScheduleEngine.generate(plan.config).first { it.id == r.eventId }
-        return ConfirmAction.confirm(plan.config, event, emptyList(), r.confirmedAt, r.policy)
-    }
+    /** What the repository saves: the plan's config and log rows, written together by ScheduleRepository.startWith. */
+    private fun saved(plan: SetupPlan.Ready) = ConfirmResult(plan.config, plan.logs)
 
     @Test
     fun `ring in anchors at the insertion`() {
@@ -30,7 +26,7 @@ class SetupStartTest {
         val plan = ready(SetupStart.plan(SetupStatus.RING_IN, method, at, now))
         assertEquals(at, plan.config.anchor)
         assertFalse(plan.config.firstInsertPending)
-        assertNull(plan.removal)
+        assertTrue(plan.logs.isEmpty())
     }
 
     @Test
@@ -50,8 +46,8 @@ class SetupStartTest {
         val removedAt = LocalDateTime(2026, 11, 1, 21, 0)
         val plan = ready(SetupStart.plan(SetupStatus.RING_OUT, method, removedAt, now))
         assertEquals(LocalDateTime(2026, 10, 11, 21, 0), plan.config.anchor)
-        assertEquals(CycleCalculator.currentRemoveId(plan.config), plan.removal!!.eventId)
-        assertEquals(removedAt, plan.removal!!.confirmedAt)
+        assertEquals(CycleCalculator.currentRemoveId(plan.config), plan.logs.single().eventId)
+        assertEquals(removedAt, plan.logs.single().confirmedAt)
 
         val result = saved(plan)
         val state = com.nobby.ring.domain.model.ScheduleState(
@@ -123,7 +119,7 @@ class SetupStartTest {
         val plan = ready(SetupStart.plan(SetupStatus.NOT_STARTED, method, today, now))
         assertEquals(today, plan.config.anchor)
         assertTrue(plan.config.firstInsertPending)
-        assertNull(plan.removal)
+        assertTrue(plan.logs.isEmpty())
         val inThree = LocalDateTime(2026, 11, 6, 8, 0)
         assertEquals(inThree, ready(SetupStart.plan(SetupStatus.NOT_STARTED, method, inThree, now)).config.anchor)
     }
@@ -135,5 +131,27 @@ class SetupStartTest {
         // I2: 10:00 is already behind 10:00:30, so that start would be overdue right after setup.
         assertEquals(SetupPlan.InPast, SetupStart.plan(SetupStatus.NOT_STARTED, method, LocalDateTime(2026, 11, 3, 10, 0), now))
         assertTrue(SetupStart.plan(SetupStatus.NOT_STARTED, method, LocalDateTime(2026, 11, 3, 10, 1), now) is SetupPlan.Ready)
+    }
+
+    @Test
+    fun `pause over keeps the real removal logged and waits for the new ring`() {
+        // I1: removed 10 days ago; the new ring goes in at the next minute. The removal stays the logged one.
+        val removedAt = LocalDateTime(2026, 10, 24, 9, 0)
+        val start = LocalDateTime(2026, 11, 3, 10, 1)
+        val plan = ready(SetupStart.plan(SetupStatus.NOT_STARTED, method, start, now, removedAt))
+        assertEquals(start, plan.config.anchor)
+        assertTrue(plan.config.firstInsertPending)
+        val removal = plan.logs.single()
+        assertEquals(EventKind.REMOVE, removal.kind)
+        assertEquals(removedAt, removal.plannedAt)
+        assertEquals(removedAt, removal.confirmedAt)
+        // The logged removal is no event of the new schedule, so nothing else counts as confirmed.
+        assertEquals(EventKind.INSERT, OverdueCalculator.nextPending(ScheduleEngine.generate(plan.config), plan.logs)!!.kind)
+    }
+
+    @Test
+    fun `pause over still rejects a start that is not ahead`() {
+        val removedAt = LocalDateTime(2026, 10, 24, 9, 0)
+        assertEquals(SetupPlan.InPast, SetupStart.plan(SetupStatus.NOT_STARTED, method, LocalDateTime(2026, 11, 3, 10, 0), now, removedAt))
     }
 }
