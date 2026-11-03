@@ -4,6 +4,7 @@ import com.nobby.ring.data.db.EventLogDao
 import com.nobby.ring.data.db.EventLogEntity
 import com.nobby.ring.data.prefs.MethodConfigStore
 import com.nobby.ring.domain.NobbyClock
+import com.nobby.ring.domain.engine.ConfigChange
 import com.nobby.ring.domain.engine.ConfirmAction
 import com.nobby.ring.domain.engine.CycleCalculator
 import com.nobby.ring.domain.engine.OverdueCalculator
@@ -36,7 +37,21 @@ class ScheduleRepository @Inject constructor(
 
     suspend fun currentState(): ScheduleState? = state.first()
 
-    suspend fun updateConfig(config: ScheduleConfig) = configStore.save(config)
+    /**
+     * Saves an edited schedule. A removal already confirmed for the current cycle is re-keyed to the edited schedule's
+     * REMOVE id ([ConfigChange.carriedRemoval]), so the pause stays a pause after Apply. The new key is written BEFORE
+     * the config and the old one dropped AFTER it: every intermediate state has the removal logged under the id the
+     * stored config expects (an extra unknown id is ignored, as in [confirm]); a crash in between leaves at most a
+     * stale duplicate row, never an orphaned removal.
+     */
+    suspend fun updateConfig(config: ScheduleConfig) {
+        val carried = configStore.config.first()?.let { old ->
+            ConfigChange.carriedRemoval(old, config, eventLogDao.allOnce().map(::toDomain))
+        }
+        carried?.let { eventLogDao.upsert(listOf(toEntity(it.to))) }
+        configStore.save(config)
+        carried?.let { eventLogDao.delete(it.from.eventId) }
+    }
 
     suspend fun skipPause() {
         val config = configStore.config.first() ?: return

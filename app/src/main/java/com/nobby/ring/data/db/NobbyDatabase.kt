@@ -50,6 +50,7 @@ interface EventLogDao {
     @Query("SELECT * FROM event_log ORDER BY plannedAt") fun all(): Flow<List<EventLogEntity>>
     @Query("SELECT * FROM event_log ORDER BY plannedAt") suspend fun allOnce(): List<EventLogEntity>
     @Upsert suspend fun upsert(entities: List<EventLogEntity>)
+    @Query("DELETE FROM event_log WHERE eventId = :eventId") suspend fun delete(eventId: String)
     @Query("DELETE FROM event_log") suspend fun clear()
 }
 

@@ -122,4 +122,107 @@ class ScheduleRepositoryTest {
         assertEquals(PhaseKind.WEAR, after.position.phase)
         assertEquals(true, after.position.ringIn)
     }
+
+    // --- I1: Settings > Cycle & schedule > Apply after the removal was confirmed -------------------------------------
+
+    private val ring21 = Method.ring(21, 7, LocalTime(21, 0))
+    private val nov1 = LocalDateTime(2026, 11, 1, 21, 0)
+
+    private fun repoAt(now: LocalDateTime) = ScheduleRepository(MethodConfigStore(dataStore), db.eventLogDao(), object : NobbyClock {
+        override fun now() = now
+        override val zone = TimeZone.UTC
+    })
+
+    /** Ring in since Nov 1 21:00, removal (planned Nov 22 21:00) confirmed at [confirmedAt] through the real confirm path. */
+    private suspend fun ScheduleRepository.confirmedRemoval(confirmedAt: LocalDateTime = fixedNow, policy: ShiftPolicy = ShiftPolicy.KEEP) =
+        run {
+            updateConfig(ScheduleConfig(ring21, nov1))
+            val wear = state.filterNotNull().first()
+            assertEquals(EventKind.REMOVE, wear.nextEvent!!.kind)
+            confirm(wear.nextEvent!!.id, confirmedAt, policy)
+            val pause = state.filterNotNull().first()
+            assertEquals(PhaseKind.PAUSE, pause.position.phase)
+            pause
+        }
+
+    private suspend fun ScheduleRepository.assertPauseUntil(insertAt: LocalDateTime) {
+        val s = state.filterNotNull().first()
+        assertEquals(PhaseKind.PAUSE, s.position.phase)
+        assertEquals(false, s.position.ringIn)
+        assertEquals(EventKind.INSERT, s.nextEvent!!.kind)
+        assertEquals(insertAt, s.nextEvent!!.plannedAt)
+        assertNull(s.overdue)
+        assertEquals("one removal in the history", 1, db.eventLogDao().allOnce().size)
+    }
+
+    @Test
+    fun `changing the time of day in the pause keeps the confirmed removal (I1)`() = runTest {
+        val pause = repo.confirmedRemoval()
+        repo.updateConfig(pause.config.copy(method = Method.ring(21, 7, LocalTime(20, 0))))
+        repo.assertPauseUntil(LocalDateTime(2026, 11, 29, 20, 0))
+    }
+
+    @Test
+    fun `one wear day less in the pause keeps the confirmed removal and shows no overdue (I1)`() = runTest {
+        val pause = repo.confirmedRemoval()
+        repo.updateConfig(pause.config.copy(method = Method.ring(20, 7, LocalTime(21, 0))))
+        repo.assertPauseUntil(LocalDateTime(2026, 11, 28, 21, 0))
+    }
+
+    @Test
+    fun `one wear day more in the pause keeps the confirmed removal (I1)`() = runTest {
+        val pause = repo.confirmedRemoval()
+        repo.updateConfig(pause.config.copy(method = Method.ring(22, 7, LocalTime(21, 0))))
+        repo.assertPauseUntil(LocalDateTime(2026, 11, 30, 21, 0))
+    }
+
+    @Test
+    fun `fewer pause days in the pause keep the confirmed removal (I1)`() = runTest {
+        val pause = repo.confirmedRemoval()
+        repo.updateConfig(pause.config.copy(method = Method.ring(21, 5, LocalTime(21, 0))))
+        repo.assertPauseUntil(LocalDateTime(2026, 11, 27, 21, 0))
+    }
+
+    @Test
+    fun `a removal confirmed a day late with SHIFT survives a new time of day (I1)`() = runTest {
+        val late = repoAt(LocalDateTime(2026, 11, 24, 12, 0))
+        val pause = late.confirmedRemoval(LocalDateTime(2026, 11, 23, 22, 0), ShiftPolicy.SHIFT) // anchor -> Nov 2
+        late.updateConfig(pause.config.copy(method = Method.ring(21, 7, LocalTime(8, 30))))
+        late.assertPauseUntil(LocalDateTime(2026, 11, 30, 8, 30))
+    }
+
+    @Test
+    fun `correcting the start date by a day in the pause keeps the removal of the same cycle (I1)`() = runTest {
+        val pause = repo.confirmedRemoval()
+        repo.updateConfig(pause.config.copy(anchor = LocalDateTime(2026, 10, 31, 21, 0)))
+        repo.assertPauseUntil(LocalDateTime(2026, 11, 28, 21, 0))
+        repo.updateConfig(pause.config.copy(anchor = LocalDateTime(2026, 11, 3, 21, 0)))
+        repo.assertPauseUntil(LocalDateTime(2026, 12, 1, 21, 0))
+    }
+
+    @Test
+    fun `a new start date after the removal is a new ring and stays in wear (I1)`() = runTest {
+        val later = repoAt(LocalDateTime(2026, 11, 26, 12, 0))
+        val pause = later.confirmedRemoval()
+        later.updateConfig(pause.config.copy(anchor = LocalDateTime(2026, 11, 26, 10, 0)))
+        val s = later.state.filterNotNull().first()
+        assertEquals(PhaseKind.WEAR, s.position.phase)
+        assertEquals(EventKind.REMOVE, s.nextEvent!!.kind)
+        assertEquals(LocalDateTime(2026, 12, 17, 21, 0), s.nextEvent!!.plannedAt)
+        assertNull(s.overdue)
+    }
+
+    @Test
+    fun `changing the time of day during wear leaves the ring in (I1)`() = runTest {
+        val wear = repoAt(LocalDateTime(2026, 11, 10, 12, 0))
+        wear.updateConfig(ScheduleConfig(ring21, nov1))
+        wear.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(20, 0)), nov1))
+        val s = wear.state.filterNotNull().first()
+        assertEquals(PhaseKind.WEAR, s.position.phase)
+        assertEquals(true, s.position.ringIn)
+        assertEquals(EventKind.REMOVE, s.nextEvent!!.kind)
+        assertEquals(LocalDateTime(2026, 11, 22, 20, 0), s.nextEvent!!.plannedAt)
+        assertNull(s.overdue)
+        assertEquals(0, db.eventLogDao().allOnce().size)
+    }
 }

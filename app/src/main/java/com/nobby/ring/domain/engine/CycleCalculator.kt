@@ -34,11 +34,8 @@ object CycleCalculator {
         // OverdueCalculator.nextPending uses. Every ConfirmAction path logs it that way (a shifted removal under the
         // regenerated id, v1.1 fix 3). Matching by plannedAt >= anchor instead also picked up removals of a later
         // schedule after Cycle & schedule moved the anchor back, showing "Pause" while that REMOVE was overdue (D9).
-        val currentRemoveId = eventId(
-            EventKind.REMOVE,
-            config.anchor.date.plus(method.wearDays, DateTimeUnit.DAY).atTime(method.timeOfDay),
-        )
-        val removeConfirmed = logs.any { it.kind == EventKind.REMOVE && it.eventId == currentRemoveId }
+        val removeId = currentRemoveId(config)
+        val removeConfirmed = logs.any { it.kind == EventKind.REMOVE && it.eventId == removeId }
         val ringIn = !removeConfirmed
         return if (ringIn) {
             CyclePosition(PhaseKind.WEAR, dayInCycle, dayInCycle, method.cycleLengthDays, method.wearDays, ringIn = true)
@@ -47,4 +44,10 @@ object CycleCalculator {
             CyclePosition(PhaseKind.PAUSE, dayInCycle, dayInPause, method.cycleLengthDays, method.pauseDays, ringIn = false)
         }
     }
+
+    /** Id of the current cycle's (cycle 0) REMOVE: the same formula ScheduleEngine.generate uses. */
+    fun currentRemoveId(config: ScheduleConfig): String = eventId(
+        EventKind.REMOVE,
+        config.anchor.date.plus(config.method.wearDays, DateTimeUnit.DAY).atTime(config.method.timeOfDay),
+    )
 }
