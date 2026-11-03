@@ -71,6 +71,11 @@ class CalendarViewModel @Inject constructor(
     fun prevMonth() = month.update { it.minus(1, DateTimeUnit.MONTH) }
     fun nextMonth() = month.update { it.plus(1, DateTimeUnit.MONTH) }
 
+    fun goToToday() {
+        month.value = LocalDate(today.year, today.monthNumber, 1)
+        select(today)
+    }
+
     fun select(date: LocalDate) {
         // Persist an in-flight edit for the previous day right away; the debounce would otherwise be superseded.
         draft.value?.let { pending -> viewModelScope.launch { notes.save(pending.date, pending.text) } }

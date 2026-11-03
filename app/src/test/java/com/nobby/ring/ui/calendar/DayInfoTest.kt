@@ -34,4 +34,14 @@ class DayInfoTest {
         val days = DayInfoBuilder.build(state, 2026, 10, emptySet())
         assertTrue(days.all { it.phase == DayPhase.NONE })
     }
+
+    @Test
+    fun `day in phase counts wear and pause separately`() {
+        val days = DayInfoBuilder.build(state, 2026, 11, emptySet())
+        assertEquals(3, days[2].dayInPhase)    // Nov 3: wear day 3
+        assertEquals(21, days[2].phaseLength)
+        assertEquals(1, days[21].dayInPhase)   // Nov 22: pause day 1
+        assertEquals(7, days[21].phaseLength)
+        assertEquals(1, days[28].dayInPhase)   // Nov 29: new ring, wear day 1
+    }
 }

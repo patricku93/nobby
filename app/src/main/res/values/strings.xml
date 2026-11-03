@@ -199,8 +199,6 @@
     <string name="calendar_notes_hint">Write something…</string>
     <string name="calendar_note_empty">No note for this day yet.</string>
     <string name="calendar_cell_a11y">%1$s, %2$s</string>
-    <!-- legacy v1 calendar, removed in Task 10 -->
-    <string name="calendar_notes_title">Note – %1$s</string>
 
     <!-- history -->
     <string name="history_empty_title">Nothing here yet</string>
