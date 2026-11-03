@@ -1,7 +1,7 @@
 # NoBby v2 — "Sticker Diary" re-skin (design)
 
 Date: 2026-11-03
-Status: draft for owner review
+Status: approved by owner 2026-11-03
 Builds on: `2026-10-29-nobby-ring-tracker-design.md` (v1, shipped at `acc0231`)
 Design source of truth: claude.ai/design project "NoBby Design System"
 (local copy `.superpowers/design/bundle/`, report `.superpowers/design/design-language-report.md`)
@@ -62,7 +62,7 @@ activity, cloud, iOS.
 - Composable `Nobby(mood, size, prop?)` in `ui/components/`.
 - Moments (one mascot per screen max):
   - Home: sticker on the ring — happy (wear), sleepy (pause), neutral (due today), worried (overdue), alert (safety threshold crossed).
-  - Done celebration sheet (new): after any confirmation on Home or from the overdue card, a bottom sheet with "yay" + confetti doodles and a short line ("Erledigt! Gut gemacht 💗" / "Done! Nice one"), auto-dismisses after 4 s, tap or swipe to close. The bundle mockup also shows an "Rückgängig" (undo) button: OPEN QUESTION for the owner — undo needs a new domain operation (remove the log entry and revert any anchor shift); without approval it is left out. Not shown for confirmations made from a notification.
+  - Done celebration sheet (new): after any confirmation on Home or from the overdue card, a bottom sheet with "yay" + confetti doodles and a short line ("Erledigt! Gut gemacht 💗" / "Done! Nice one"), auto-dismisses after 4 s, tap or swipe to close. No undo button (owner decision 2026-11-03); the "Rückgängig" button in the bundle mockup is not implemented. Not shown for confirmations made from a notification.
   - Onboarding: one illustration per step (wave, calendar, bell, palette).
   - History empty state, Calendar selected day without note (small, subtle), Settings > About header.
   - Notification large icon: flat rim-less face exported as 96×96 PNGs, one per preset × mood (happy for reminders, worried for overdue and safety) = 10 bitmaps, chosen from the active preset. Small icon becomes a new monochrome ring glyph (`ic_stat_nobby`) — the current small icon is the launcher foreground, which Android renders as a blob.
