@@ -13,6 +13,7 @@ import com.nobby.ring.domain.NobbyClock
 import com.nobby.ring.domain.engine.ShiftPolicy
 import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.Method
+import com.nobby.ring.domain.model.PhaseKind
 import com.nobby.ring.domain.model.ScheduleConfig
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -106,5 +107,19 @@ class ScheduleRepositoryTest {
         assertEquals(EventKind.INSERT, after.nextEvent!!.kind)
         assertEquals(LocalDateTime(2026, 12, 1, 21, 0), after.nextEvent!!.plannedAt)
         assertNull(after.overdue)
+    }
+    @Test
+    fun `apply with an older anchor after a confirmed removal keeps the ring in while that remove is overdue (D9)`() = runTest {
+        val method = Method.ring(21, 7, LocalTime(21, 0))
+        repo.updateConfig(ScheduleConfig(method, LocalDateTime(2026, 11, 1, 21, 0)))
+        val before = repo.state.filterNotNull().first()
+        repo.confirm(before.nextEvent!!.id, fixedNow, ShiftPolicy.KEEP) // REMOVE Nov 22 confirmed
+        val pause = repo.state.filterNotNull().first()
+        assertEquals(PhaseKind.PAUSE, pause.position.phase)
+        repo.updateConfig(pause.config.copy(anchor = LocalDateTime(2026, 9, 20, 21, 0))) // Settings > Cycle & schedule > Apply
+        val after = repo.state.filterNotNull().first()
+        assertEquals(EventKind.REMOVE, after.overdue!!.event.kind)
+        assertEquals(PhaseKind.WEAR, after.position.phase)
+        assertEquals(true, after.position.ringIn)
     }
 }

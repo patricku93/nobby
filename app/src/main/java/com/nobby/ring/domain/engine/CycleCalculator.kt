@@ -30,13 +30,15 @@ object CycleCalculator {
     fun positionAt(config: ScheduleConfig, logs: List<EventLog>, now: LocalDateTime): CyclePosition {
         val method = config.method
         val dayInCycle = ((now.date.toEpochDays() - config.anchor.date.toEpochDays()) + 1).coerceAtLeast(1)
-        // A late removal confirmed with a shift is logged under the regenerated REMOVE id but keeps its original
-        // plannedAt, which lies before the new anchor when the removal was more than wearDays late (v1.1 fix 3).
+        // The removal counts for this cycle only when it is logged under this cycle's REMOVE id, the same rule
+        // OverdueCalculator.nextPending uses. Every ConfirmAction path logs it that way (a shifted removal under the
+        // regenerated id, v1.1 fix 3). Matching by plannedAt >= anchor instead also picked up removals of a later
+        // schedule after Cycle & schedule moved the anchor back, showing "Pause" while that REMOVE was overdue (D9).
         val currentRemoveId = eventId(
             EventKind.REMOVE,
             config.anchor.date.plus(method.wearDays, DateTimeUnit.DAY).atTime(method.timeOfDay),
         )
-        val removeConfirmed = logs.any { it.kind == EventKind.REMOVE && (it.plannedAt >= config.anchor || it.eventId == currentRemoveId) }
+        val removeConfirmed = logs.any { it.kind == EventKind.REMOVE && it.eventId == currentRemoveId }
         val ringIn = !removeConfirmed
         return if (ringIn) {
             CyclePosition(PhaseKind.WEAR, dayInCycle, dayInCycle, method.cycleLengthDays, method.wearDays, ringIn = true)

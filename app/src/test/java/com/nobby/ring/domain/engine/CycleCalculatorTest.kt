@@ -104,4 +104,13 @@ class CycleCalculatorTest {
         assertEquals(PhaseKind.WEAR, p.phase)
         assertEquals(5, p.dayInPhase)
     }
+
+    @Test
+    fun `a removal of a later schedule does not count after the anchor moved back (D9)`() {
+        val older = ScheduleConfig(config.method, LocalDateTime(2026, 9, 20, 21, 0)) // REMOVE Oct 11 still pending
+        val laterRemove = EventLog("REMOVE@2026-11-22T21:00", EventKind.REMOVE, LocalDateTime(2026, 11, 22, 21, 0), LocalDateTime(2026, 11, 22, 21, 0))
+        val p = CycleCalculator.positionAt(older, listOf(laterRemove), LocalDateTime(2026, 11, 3, 12, 0))
+        assertEquals(PhaseKind.WEAR, p.phase)
+        assertTrue(p.ringIn)
+    }
 }
