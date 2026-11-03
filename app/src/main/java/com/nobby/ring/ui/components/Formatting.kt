@@ -87,6 +87,10 @@ fun formatLongDate(date: LocalDate): String = date.toJavaLocalDate().format(best
 /** "So., 8. Nov. · 21:00". The middle dot separates two values; it is not translated text. */
 fun formatDateTime(dt: LocalDateTime): String = "${formatShortDate(dt.date)} · ${formatTime(dt.time)}"
 
+/** "8. Nov. · 21:00" / "Nov 8 · 21:00": [formatDateTime] without the weekday, for tight spots at large font scales. */
+fun formatDateTimeCompact(dt: LocalDateTime): String =
+    "${dt.date.toJavaLocalDate().format(bestPattern("dMMM"))} · ${formatTime(dt.time)}"
+
 /** Localised duration for composables; recomposes on configuration (locale) changes. */
 @Composable
 fun formatDuration(d: Duration): String {

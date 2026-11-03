@@ -1,8 +1,15 @@
 package com.nobby.ring.ui.components
 
-import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -17,6 +24,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
 class BeadRingTest {
@@ -80,5 +88,79 @@ class BeadRingTest {
         val cy = ring.center.y
         val corner = kotlin.math.hypot(bounds.right - cx, maxOf(bounds.bottom - cy, cy - bounds.top))
         assertTrue("corner ${'$'}corner outside disc radius ${'$'}{disc / 2}", corner <= disc / 2 + 1f)
+    }
+
+    /** Every row, scaled about its slot centre, stays inside its slot and keeps its outer corners inside the circle. */
+    private fun assertInside(fit: CircleFit, widths: List<Float>, heights: List<Float>, diameter: Float) {
+        var top = -fit.slots.sum() / 2f
+        widths.indices.forEach { i ->
+            val h = heights[i] * fit.scales[i]
+            val centre = top + fit.slots[i] / 2f
+            val corner = kotlin.math.hypot(widths[i] * fit.scales[i] / 2f, kotlin.math.abs(centre) + h / 2f)
+            assertTrue("row " + i + " corner " + corner, corner <= diameter / 2f + 0.01f)
+            assertTrue("row " + i + " fits its slot", h <= fit.slots[i] + 0.01f)
+            top += fit.slots[i]
+        }
+    }
+
+    @Test
+    fun `a wide line at the rim shrinks on its own and the number keeps scale 1 (I2)`() {
+        // number 80 x 100, label 140 x 24, wide date line 200 x 20 in a 194 disc
+        val widths = listOf(80f, 140f, 200f)
+        val heights = listOf(100f, 24f, 20f)
+        assertTrue(circleFitScale(widths, heights, 194f) < 1f) // uniform would shrink the number too
+        val fit = circleFitRows(widths, heights, 194f)
+        assertEquals(1f, fit.scales[0], 0f)
+        assertTrue(fit.scales[2] < 1f)
+        assertInside(fit, widths, heights, 194f)
+        // everything fits: nothing scales
+        assertEquals(listOf(1f, 1f), circleFitRows(listOf(60f, 100f), listOf(60f, 20f), 194f).scales)
+        // the stack is too tall for the number to stay: it gives way too, still inside
+        val tallW = listOf(80f, 150f, 150f)
+        val tallH = listOf(170f, 30f, 30f)
+        val tall = circleFitRows(tallW, tallH, 194f)
+        assertTrue(tall.scales[0] < 1f)
+        assertInside(tall, tallW, tallH, 194f)
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE) // real text metrics
+    fun `at font scale 1_3 the number keeps its size and only the text lines shrink (I2)`() {
+        val ring = 260.dp
+        compose.setContent {
+            val base = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale = 1.3f)) {
+                NobbyTheme(ThemeSpec()) {
+                    // Rows like Home's RingCenter: the number is sized in dp (it ignores the font scale) with its box
+                    // trimmed; a long date line sits at the rim.
+                    val numberSp = with(LocalDensity.current) { (96.dp * (ring / 264.dp)).toSp() }
+                    val number = NobbyType.countdown.copy(fontSize = numberSp, lineHeight = numberSp)
+                    val sub = MaterialTheme.typography.bodyMedium
+                    Column {
+                        BeadRing(RingTone.WEAR, beads = 21, done = 8, modifier = Modifier.size(ring)) {
+                            CircleFitColumn {
+                                Text("13", Modifier.trimLineBox().testTag("number"), style = number, maxLines = 1)
+                                Text("Tage bis raus", style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false)
+                                Text("Mi., 12. Nov. · 21:00", Modifier.testTag("sub"), style = sub, maxLines = 1, softWrap = false)
+                            }
+                        }
+                        Text("13", Modifier.trimLineBox().testTag("numberRef"), style = number, maxLines = 1)
+                        Text("Mi., 12. Nov. · 21:00", Modifier.testTag("subRef"), style = sub, maxLines = 1, softWrap = false)
+                    }
+                }
+            }
+        }
+        fun bounds(tag: String) = compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+        val number = bounds("number")
+        val sub = bounds("sub")
+        assertEquals("number keeps its full size", bounds("numberRef").height, number.height, 1f)
+        val subRef = bounds("subRef")
+        assertTrue("sub-line shrinks: " + sub.height + " vs " + subRef.height, sub.height < subRef.height - 1f)
+        val disc = compose.onNode(SemanticsMatcher.expectValue(RingToneKey, RingTone.WEAR)).fetchSemanticsNode().boundsInRoot
+        val r = with(compose.density) { ringInnerDiameter(ring).toPx() } / 2f
+        listOf(number, sub).forEach { b ->
+            val corner = kotlin.math.hypot(maxOf(b.right - disc.center.x, disc.center.x - b.left), maxOf(b.bottom - disc.center.y, disc.center.y - b.top))
+            assertTrue("corner " + corner + " outside disc radius " + r, corner <= r + 1f)
+        }
     }
 }

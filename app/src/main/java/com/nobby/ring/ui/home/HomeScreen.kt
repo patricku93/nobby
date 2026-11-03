@@ -59,6 +59,8 @@ import com.nobby.ring.ui.components.BeadRing
 import com.nobby.ring.ui.components.ButtonTone
 import com.nobby.ring.ui.components.ChipTone
 import com.nobby.ring.ui.components.CircleFitColumn
+import com.nobby.ring.ui.components.trimLineBox
+import com.nobby.ring.ui.components.formatDateTimeCompact
 import com.nobby.ring.ui.components.NextEventCard
 import com.nobby.ring.ui.components.NobbyButton
 import com.nobby.ring.ui.components.NobbyTopBar
@@ -166,10 +168,10 @@ private fun HomePortrait(p: HomeParts) {
 private fun HomeLandscape(p: HomeParts, height: Dp) {
     val ringSize = (height - NobbySpace.m * 2).coerceIn(LANDSCAPE_RING_MIN, LANDSCAPE_RING_MAX)
     Row(Modifier.fillMaxSize().padding(horizontal = NobbySpace.gutter), horizontalArrangement = Arrangement.spacedBy(NobbySpace.l)) {
-        Box(
-            Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(vertical = NobbySpace.m),
-            contentAlignment = Alignment.Center,
-        ) { HomeRing(p, Modifier.size(ringSize)) }
+        // The outer box centres the ring vertically once it hits its size cap; the inner one scrolls on very short windows.
+        Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+            Box(Modifier.verticalScroll(rememberScrollState()).padding(vertical = NobbySpace.m)) { HomeRing(p, Modifier.size(ringSize)) }
+        }
         Column(
             Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(vertical = NobbySpace.m),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -243,10 +245,11 @@ private fun RingCenter(model: RingModel, ringSize: Dp) {
             Text(stringResource(R.string.ring_today), style = NobbyType.countdownWord.copy(fontSize = wordSp, lineHeight = wordSp), color = c.onSurface)
         } else {
             model.number?.let {
-                Text("$it", style = NobbyType.countdown.copy(fontSize = numberSp, lineHeight = numberSp), color = if (urgent) c.error else c.onSurface, maxLines = 1)
+                Text("$it", Modifier.trimLineBox(), style = NobbyType.countdown.copy(fontSize = numberSp, lineHeight = numberSp), color = if (urgent) c.error else c.onSurface, maxLines = 1)
             }
         }
-        // One line each: CircleFitColumn scales the stack down to fit inside the beads instead of wrapping or clipping.
+        // One line each: CircleFitColumn keeps the number at full size and shrinks these lines to fit inside the beads
+        // instead of wrapping or clipping.
         Text(model.labelText(), style = MaterialTheme.typography.titleMedium, color = c.onSurface, maxLines = 1, softWrap = false)
         model.subText()?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.onSurfaceVariant, maxLines = 1, softWrap = false) }
         if (model.safety) {
@@ -279,13 +282,17 @@ private fun RingModel.labelText(): String {
 @Composable
 private fun RingModel.subText(): String? {
     val e = event ?: return null
+    // At large font scales the weekday goes, so the line near the rim stays readable beside a full-size number.
+    val date = if (LocalDensity.current.fontScale > COMPACT_DATE_FONT_SCALE) formatDateTimeCompact(e.plannedAt) else formatDateTime(e.plannedAt)
     return when (label) {
         RingLabel.TODAY -> stringResource(R.string.ring_at_time, formatTime(e.plannedAt.time))
-        RingLabel.OVERDUE_DAYS, RingLabel.OVERDUE_HOURS -> if (safety) null else stringResource(R.string.ring_since, formatDateTime(e.plannedAt))
+        RingLabel.OVERDUE_DAYS, RingLabel.OVERDUE_HOURS -> if (safety) null else stringResource(R.string.ring_since, date)
         RingLabel.NONE -> null
-        else -> formatDateTime(e.plannedAt)
+        else -> date
     }
 }
+
+private const val COMPACT_DATE_FONT_SCALE = 1.15f
 
 @Composable
 private fun NextSection(state: ScheduleState, model: RingModel, busy: Boolean, actions: HomeActions) {

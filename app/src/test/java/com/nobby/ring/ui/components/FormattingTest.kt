@@ -62,6 +62,14 @@ class FormattingTest {
     }
 
     @Test
+    @Config(qualifiers = "de")
+    fun `compact date time drops the weekday`() {
+        val s = formatDateTimeCompact(LocalDateTime(2026, 11, 8, 21, 0))
+        assertTrue(s, s.startsWith("8. Nov"))
+        assertTrue(s, s.endsWith(" · 21:00"))
+    }
+
+    @Test
     @Config(qualifiers = "en")
     fun `theme mode labels resolve per mode in english`() {
         compose.setContent {
