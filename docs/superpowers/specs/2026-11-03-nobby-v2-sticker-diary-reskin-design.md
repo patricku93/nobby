@@ -58,14 +58,14 @@ activity, cloud, iOS.
 
 ## 7. Mascot
 
-- Six moods as VectorDrawables (`res/drawable/nobby_<mood>.xml`: happy, neutral, sleepy, worried, alert, yay) plus the props the bundle introduces for onboarding (wave, calendar, bell, palette), all recoloured at runtime via `NobbyExtraColors` (tint layers), so each preset gets its own mascot colours.
-- Composable `Nobby(mood, size, prop?)` in `ui/components/`.
+- Drawn in Compose `Canvas` (`ui/mascot/`) from the exact `nobby.js` path geometry (the §15 fallback, chosen up front because a VectorDrawable takes only one tint): six moods (happy, neutral, sleepy, worried, alert, yay), onboarding props (wave, calendar, bell, palette, note), a flat rim-less face and the Done burst, all coloured at runtime from `MascotColors` of the active preset.
+- Composable `Nobby(mood, size, prop?)` in `ui/mascot/`. The same `DrawScope` painter renders the notification bitmaps; only the Glance widget uses white VectorDrawable masks tinted per preset.
 - Moments (one mascot per screen max):
   - Home: sticker on the ring — happy (wear), sleepy (pause), neutral (due today), worried (overdue), alert (safety threshold crossed).
   - Done celebration sheet (new): after any confirmation on Home or from the overdue card, a bottom sheet with "yay" + confetti doodles and a short line ("Erledigt! Gut gemacht 💗" / "Done! Nice one"), auto-dismisses after 4 s, tap or swipe to close. No undo button (owner decision 2026-11-03); the "Rückgängig" button in the bundle mockup is not implemented. Not shown for confirmations made from a notification.
   - Onboarding: one illustration per step (wave, calendar, bell, palette).
   - History empty state, Calendar selected day without note (small, subtle), Settings > About header.
-  - Notification large icon: flat rim-less face exported as 96×96 PNGs, one per preset × mood (happy for reminders, worried for overdue and safety) = 10 bitmaps, chosen from the active preset. Small icon becomes a new monochrome ring glyph (`ic_stat_nobby`) — the current small icon is the launcher foreground, which Android renders as a blob.
+  - Notification large icon: flat rim-less face rendered at runtime at the system large-icon size, one per preset × mood (happy for reminders, worried for overdue and safety), cached. Small icon becomes a new monochrome ring glyph (`ic_stat_nobby`) — the current small icon is the launcher foreground, which Android renders as a blob.
   - Widget: flat face at 2×2 and 4×2.
 - Accessibility: the mascot is decorative (`contentDescription = null`) everywhere except the Done sheet, where the line of text carries the meaning.
 
