@@ -23,8 +23,22 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Release signing comes only from the environment (CI secrets); without it the release APK stays unsigned.
+    val keystoreFile = System.getenv("NOBBY_KEYSTORE_FILE")?.let(::file)?.takeIf { it.exists() }
+    signingConfigs {
+        if (keystoreFile != null) {
+            create("release") {
+                storeFile = keystoreFile
+                storePassword = System.getenv("NOBBY_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("NOBBY_KEY_ALIAS")
+                keyPassword = System.getenv("NOBBY_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (keystoreFile != null) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
