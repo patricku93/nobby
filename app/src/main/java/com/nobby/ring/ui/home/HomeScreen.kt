@@ -170,9 +170,8 @@ private fun Context.startSettings(intent: Intent) {
 /** A non-interactive 32 dp chip; an AssistChip would reserve a 48 dp touch target for a label nobody taps. */
 @Composable
 private fun PhaseChip(state: ScheduleState) {
-    val p = state.position
     Text(
-        stringResource(R.string.phase_day, p.phase.label(), p.dayInPhase, p.phaseLengthDays),
+        PhaseChipModel.from(state).text(),
         Modifier
             .clip(MaterialTheme.shapes.small)
             .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
