@@ -86,12 +86,6 @@
     <string name="home_overdue_body">Geplant war %1$s. Tippe auf Erledigt, sobald du es gemacht hast.</string>
     <string name="home_overdue_safety_wear">Der Ring ist seit mehr als 28 Tagen drin. Der Schutz kann verringert sein – lies den Beipackzettel; eventuell brauchst du eine zusätzliche Verhütungsmethode. Frag in der Arztpraxis oder Apotheke nach.</string>
     <string name="home_overdue_safety_pause">Die ringfreie Pause dauert länger als 7 Tage. Der Schutz kann verringert sein – lies den Beipackzettel; eventuell brauchst du eine zusätzliche Verhütungsmethode. Frag in der Arztpraxis oder Apotheke nach.</string>
-    <!-- legacy v1 Home, entfernt in Task 9 -->
-    <string name="home_days_remaining">Tage noch</string>
-    <string name="home_day_remaining">Tag noch</string>
-    <string name="home_today">heute</string>
-    <string name="home_overdue_days">Tage überfällig</string>
-    <string name="home_overdue_title">Überfällig: %1$s</string>
 
     <!-- Bestätigen -->
     <string name="confirm_title">Du warst spät dran</string>

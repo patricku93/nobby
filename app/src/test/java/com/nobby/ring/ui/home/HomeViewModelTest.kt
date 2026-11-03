@@ -68,9 +68,29 @@ class HomeViewModelTest {
 
     @After fun tearDown() { Dispatchers.resetMain(); db.close() }
 
-    private fun vm() = HomeViewModel(context, repo, clock, ScheduleChangeNotifier(setOf(object : ScheduleChangeListener {
-        override suspend fun onScheduleChanged() { changes++ }
-    })), ReminderScheduler(context, repo, ReminderRepository(db.reminderRuleDao()), OverdueConfigStore(ds), clock, ds, Notifier(context)))
+    private fun vm() = HomeViewModel(
+        context, repo, clock,
+        ScheduleChangeNotifier(setOf(object : ScheduleChangeListener { override suspend fun onScheduleChanged() { changes++ } })),
+        ReminderScheduler(context, repo, ReminderRepository(db.reminderRuleDao()), OverdueConfigStore(ds), clock, ds, Notifier(context)),
+        Notifier(context),
+    )
+
+    @Test
+    fun `an in-app done shows the celebration with the next event and dismiss clears it`() = runTest(dispatcher) {
+        nowValue = LocalDateTime(2026, 11, 22, 21, 0) // on time: no dialog
+        val vm = vm()
+        backgroundScope.launch { vm.uiState.collect {} }
+        dispatcher.scheduler.advanceUntilIdle()
+        vm.uiState.first { it.state != null }
+        vm.onDoneTapped()
+        val shown = vm.uiState.first { it.celebration != null }.celebration!!
+        assertEquals(EventKind.REMOVE, shown.kind)
+        assertEquals(EventKind.INSERT, shown.nextKind)
+        assertEquals(LocalDateTime(2026, 11, 29, 21, 0), shown.nextAt)
+        vm.dismissCelebration()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertNull(vm.uiState.value.celebration)
+    }
 
     @Test
     fun `done on a late event opens the confirm dialog, SHIFT moves next insert`() = runTest(dispatcher) {

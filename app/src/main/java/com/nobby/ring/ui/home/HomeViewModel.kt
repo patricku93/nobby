@@ -9,8 +9,10 @@ import com.nobby.ring.data.repo.ScheduleRepository
 import com.nobby.ring.domain.NobbyClock
 import com.nobby.ring.domain.engine.ConfirmAction
 import com.nobby.ring.domain.engine.ShiftPolicy
+import com.nobby.ring.domain.model.EventKind
 import com.nobby.ring.domain.model.ScheduleState
 import com.nobby.ring.domain.model.ScheduledEvent
+import com.nobby.ring.notifications.Notifier
 import com.nobby.ring.notifications.ReminderScheduler
 import com.nobby.ring.notifications.ScheduleChangeNotifier
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,6 +33,9 @@ import kotlin.time.Duration
 
 data class PendingConfirm(val event: ScheduledEvent, val confirmedAt: LocalDateTime, val delay: Duration)
 
+/** Shown on the Done sheet after a confirmation made in the app (never for notification or widget confirmations). */
+data class Celebration(val kind: EventKind, val nextKind: EventKind?, val nextAt: LocalDateTime?)
+
 /** True when the next event is due today or overdue, i.e. it may be confirmed. */
 val ScheduleState.isDue: Boolean get() = daysUntilNext?.let { it <= 0 } == true
 
@@ -38,6 +43,7 @@ data class HomeUiState(
     val state: ScheduleState? = null,
     val pendingConfirm: PendingConfirm? = null,
     val busy: Boolean = false,
+    val celebration: Celebration? = null,
 )
 
 @HiltViewModel
@@ -47,6 +53,7 @@ class HomeViewModel @Inject constructor(
     private val clock: NobbyClock,
     private val notifier: ScheduleChangeNotifier,
     private val scheduler: ReminderScheduler,
+    private val alerts: Notifier,
 ) : ViewModel() {
     private val _exactAlarmsAllowed = MutableStateFlow(scheduler.canScheduleExact())
     /** Refreshed by [refreshPermissions] on every resume: the user may grant the permission in system settings. */
@@ -57,10 +64,10 @@ class HomeViewModel @Inject constructor(
     val notificationsEnabled: StateFlow<Boolean> = _notificationsEnabled
 
     private val pending = MutableStateFlow<PendingConfirm?>(null)
-
     private val committing = MutableStateFlow(false)
+    private val celebration = MutableStateFlow<Celebration?>(null)
 
-    val uiState: StateFlow<HomeUiState> = combine(repo.state, pending, committing) { s, p, c -> HomeUiState(s, p, c) }
+    val uiState: StateFlow<HomeUiState> = combine(repo.state, pending, committing, celebration) { s, p, c, cel -> HomeUiState(s, p, c, cel) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     fun refreshPermissions() {
@@ -93,21 +100,44 @@ class HomeViewModel @Inject constructor(
 
     fun dismissConfirm() { pending.value = null }
 
+    fun dismissCelebration() { celebration.value = null }
+
     fun toggleSkipPause() = runExclusive("toggle skip pause") {
         val config = repo.currentState()?.config ?: return@runExclusive
         if (config.skipPauseOnce) repo.cancelSkipPause() else repo.skipPause()
     }
 
-    private fun commit(event: ScheduledEvent, at: LocalDateTime, policy: ShiftPolicy) =
-        runExclusive("confirm event") { repo.confirm(event.id, at, policy) }
+    /** In-app Snooze on the overdue card: exactly the notification's Snooze action (cancel the nag, re-arm later). */
+    fun snooze() {
+        val eventId = uiState.value.state?.overdue?.event?.id ?: return
+        viewModelScope.launch {
+            try {
+                alerts.cancelOverdue()
+                scheduler.armOverdueIn(scheduler.snoozeHours(), eventId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("NoBby", "snooze failed", e)
+            }
+        }
+    }
 
-    private fun runExclusive(label: String, block: suspend () -> Unit) {
+    private fun commit(event: ScheduledEvent, at: LocalDateTime, policy: ShiftPolicy) =
+        runExclusive("confirm event", onSuccess = { celebrate(event) }) { repo.confirm(event.id, at, policy) }
+
+    private suspend fun celebrate(event: ScheduledEvent) {
+        val next = repo.currentState()?.nextEvent
+        celebration.value = Celebration(event.kind, next?.kind, next?.plannedAt)
+    }
+
+    private fun runExclusive(label: String, onSuccess: suspend () -> Unit = {}, block: suspend () -> Unit) {
         if (!committing.compareAndSet(false, true)) return
         viewModelScope.launch {
             try {
                 runCatching {
                     block()
                     notifier.notifyChanged()
+                    onSuccess()
                 }.onFailure { e ->
                     if (e is CancellationException) throw e
                     Log.e("NoBby", "$label failed", e)

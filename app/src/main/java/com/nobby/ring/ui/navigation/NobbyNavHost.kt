@@ -3,10 +3,19 @@ package com.nobby.ring.ui.navigation
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
+import androidx.annotation.StringRes
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -16,7 +25,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -32,18 +40,27 @@ fun NobbyNavHost(startDestination: String) {
 
     Scaffold(
         bottomBar = {
-            if (showBar) NavigationBar {
+            if (showBar) NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest, tonalElevation = 0.dp) {
                 listOf(
-                    Triple(Routes.HOME, R.string.nav_home, Icons.Default.Home),
-                    Triple(Routes.CALENDAR, R.string.nav_calendar, Icons.Default.CalendarMonth),
-                    Triple(Routes.HISTORY, R.string.nav_history, Icons.Default.History),
-                    Triple(Routes.SETTINGS, R.string.nav_settings, Icons.Default.Settings),
-                ).forEach { (dest, label, icon) ->
+                    NavItem(Routes.HOME, R.string.nav_home, Icons.Rounded.Home, Icons.Outlined.Home),
+                    NavItem(Routes.CALENDAR, R.string.nav_calendar, Icons.Rounded.CalendarMonth, Icons.Outlined.CalendarMonth),
+                    NavItem(Routes.HISTORY, R.string.nav_history, Icons.Rounded.History, Icons.Outlined.History),
+                    NavItem(Routes.SETTINGS, R.string.nav_settings, Icons.Rounded.Settings, Icons.Outlined.Settings),
+                ).forEach { item ->
+                    val selected = route == item.route
+                    val c = MaterialTheme.colorScheme
                     NavigationBarItem(
-                        selected = route == dest,
-                        onClick = { navController.navigate(dest) { popUpTo(Routes.HOME) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                        icon = { Icon(icon, contentDescription = null) },
-                        label = { Text(stringResource(label), maxLines = 1, softWrap = false, fontSize = 11.sp) },
+                        selected = selected,
+                        onClick = { navController.navigate(item.route) { popUpTo(Routes.HOME) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                        icon = { Icon(if (selected) item.selectedIcon else item.icon, contentDescription = null) },
+                        label = { Text(stringResource(item.label), maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = c.onPrimaryContainer,
+                            selectedTextColor = c.onSurface,
+                            indicatorColor = c.primaryContainer,
+                            unselectedIconColor = c.onSurfaceVariant,
+                            unselectedTextColor = c.onSurfaceVariant,
+                        ),
                     )
                 }
             }
@@ -73,3 +90,6 @@ fun NobbyNavHost(startDestination: String) {
         }
     }
 }
+
+/** Filled icon when selected, outlined otherwise (bundle nav bar). */
+private data class NavItem(val route: String, @StringRes val label: Int, val selectedIcon: ImageVector, val icon: ImageVector)

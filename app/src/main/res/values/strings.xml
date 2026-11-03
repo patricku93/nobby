@@ -86,12 +86,6 @@
     <string name="home_overdue_body">Planned for %1$s. Tap Done as soon as you have.</string>
     <string name="home_overdue_safety_wear">The ring has been in for more than 28 days. Protection may be reduced — check your product leaflet; you may need backup contraception. Ask your doctor or pharmacist.</string>
     <string name="home_overdue_safety_pause">The ring-free break is longer than 7 days. Protection may be reduced — check your product leaflet; you may need backup contraception. Ask your doctor or pharmacist.</string>
-    <!-- legacy v1 Home, removed in Task 9 -->
-    <string name="home_days_remaining">days to go</string>
-    <string name="home_day_remaining">day to go</string>
-    <string name="home_today">today</string>
-    <string name="home_overdue_days">days overdue</string>
-    <string name="home_overdue_title">Overdue: %1$s</string>
 
     <!-- confirm -->
     <string name="confirm_title">You were late</string>
