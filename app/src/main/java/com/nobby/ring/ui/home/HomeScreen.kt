@@ -12,8 +12,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -42,7 +44,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -57,6 +58,7 @@ import com.nobby.ring.domain.model.ScheduleState
 import com.nobby.ring.ui.components.BeadRing
 import com.nobby.ring.ui.components.ButtonTone
 import com.nobby.ring.ui.components.ChipTone
+import com.nobby.ring.ui.components.CircleFitColumn
 import com.nobby.ring.ui.components.NextEventCard
 import com.nobby.ring.ui.components.NobbyButton
 import com.nobby.ring.ui.components.NobbyTopBar
@@ -120,32 +122,92 @@ fun HomeContent(ui: HomeUiState, exactAlarmsAllowed: Boolean, notificationsEnabl
     val compact = !exactAlarmsAllowed || !notificationsEnabled
     Box(Modifier.fillMaxSize()) {
         Scaffold(topBar = { HomeTopBar(state) }) { padding ->
-            // Layout budget: the Done button stays above the fold on a Pixel 3a (393 x 807 dp) with both banners.
-            Column(
-                Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState())
-                    .padding(horizontal = NobbySpace.gutter, vertical = NobbySpace.l),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(NobbySpace.l),
-            ) {
-                if (compact) {
-                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(NobbySpace.s)) {
-                        if (!notificationsEnabled) NotificationsBanner(actions.onPermissionResult)
-                        if (!exactAlarmsAllowed) ExactAlarmBanner()
-                    }
-                }
-                PhaseChip(PhaseChipModel.from(state).text(), chipTone(state))
-                BeadRing(
-                    model.tone, model.beads, model.done,
-                    Modifier.fillMaxWidth(if (compact) 0.6f else 0.72f).widthIn(max = if (compact) 220.dp else 264.dp),
-                    // One mascot per screen: the sticker steps aside while the Done sheet shows the yay mascot.
-                    sticker = if (ui.celebration == null) { s -> Nobby(model.mood, s) } else null,
-                ) { ringSize -> RingCenter(model, ringSize) }
-                if (model.safety) SafetyNotice()
-                NextSection(state, model, ui.busy, actions)
+            BoxWithConstraints(Modifier.padding(padding).fillMaxSize()) {
+                val parts = HomeParts(state, ui, model, compact, exactAlarmsAllowed, notificationsEnabled, actions)
+                if (maxWidth > maxHeight) HomeLandscape(parts, maxHeight) else HomePortrait(parts)
             }
         }
         ui.celebration?.let { DoneSheet(it, actions.onDismissCelebration) }
     }
+}
+
+/** Everything the two Home layouts share. */
+private data class HomeParts(
+    val state: ScheduleState,
+    val ui: HomeUiState,
+    val model: RingModel,
+    val compact: Boolean,
+    val exactAlarmsAllowed: Boolean,
+    val notificationsEnabled: Boolean,
+    val actions: HomeActions,
+)
+
+@Composable
+private fun HomePortrait(p: HomeParts) {
+    // Layout budget: the Done button stays above the fold on a Pixel 3a (393 x 807 dp) with both banners.
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(horizontal = NobbySpace.gutter, vertical = NobbySpace.l),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(NobbySpace.l),
+    ) {
+        Banners(p)
+        PhaseChip(PhaseChipModel.from(p.state).text(), chipTone(p.state))
+        HomeRing(p, Modifier.fillMaxWidth(if (p.compact) 0.6f else 0.72f).widthIn(max = if (p.compact) 220.dp else 264.dp))
+        Details(p)
+    }
+}
+
+/**
+ * Landscape: the ring alone on the left, sized by the available height so all of it shows; chip, banners and the
+ * next-event / overdue card on the right, reachable without scrolling past the ring.
+ */
+@Composable
+private fun HomeLandscape(p: HomeParts, height: Dp) {
+    val ringSize = (height - NobbySpace.m * 2).coerceIn(LANDSCAPE_RING_MIN, LANDSCAPE_RING_MAX)
+    Row(Modifier.fillMaxSize().padding(horizontal = NobbySpace.gutter), horizontalArrangement = Arrangement.spacedBy(NobbySpace.l)) {
+        Box(
+            Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(vertical = NobbySpace.m),
+            contentAlignment = Alignment.Center,
+        ) { HomeRing(p, Modifier.size(ringSize)) }
+        Column(
+            Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(vertical = NobbySpace.m),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(NobbySpace.l),
+        ) {
+            PhaseChip(PhaseChipModel.from(p.state).text(), chipTone(p.state))
+            Banners(p)
+            Details(p)
+        }
+    }
+}
+
+private val LANDSCAPE_RING_MIN = 140.dp
+private val LANDSCAPE_RING_MAX = 264.dp
+
+@Composable
+private fun Banners(p: HomeParts) {
+    if (!p.compact) return
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(NobbySpace.s)) {
+        if (!p.notificationsEnabled) NotificationsBanner(p.actions.onPermissionResult)
+        if (!p.exactAlarmsAllowed) ExactAlarmBanner()
+    }
+}
+
+@Composable
+private fun HomeRing(p: HomeParts, modifier: Modifier) {
+    val model = p.model
+    BeadRing(
+        model.tone, model.beads, model.done, modifier,
+        // One mascot per screen: the sticker steps aside while the Done sheet shows the yay mascot.
+        sticker = if (p.ui.celebration == null) { s -> Nobby(model.mood, s) } else null,
+    ) { ringSize -> RingCenter(model, ringSize) }
+}
+
+@Composable
+private fun Details(p: HomeParts) {
+    if (p.model.safety) SafetyNotice()
+    NextSection(p.state, p.model, p.ui.busy, p.actions)
 }
 
 @Composable
@@ -168,7 +230,7 @@ private fun chipTone(state: ScheduleState): ChipTone = when {
     else -> ChipTone.WEAR
 }
 
-/** Number + label (+ sub line / safety pill) inside the ring; the number keeps its size at font scale 1.3. */
+/** Number + one-line label + one sub line or the safety pill inside the ring; CircleFitColumn fits it into the inner disc. */
 @Composable
 private fun RingCenter(model: RingModel, ringSize: Dp) {
     val c = MaterialTheme.colorScheme
@@ -176,7 +238,7 @@ private fun RingCenter(model: RingModel, ringSize: Dp) {
     val numberSp = with(LocalDensity.current) { (96.dp * k).toSp() }
     val wordSp = with(LocalDensity.current) { (45.dp * k).toSp() }
     val urgent = model.tone == RingTone.OVERDUE || model.tone == RingTone.SAFETY
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    CircleFitColumn {
         if (model.label == RingLabel.TODAY) {
             Text(stringResource(R.string.ring_today), style = NobbyType.countdownWord.copy(fontSize = wordSp, lineHeight = wordSp), color = c.onSurface)
         } else {
@@ -184,8 +246,9 @@ private fun RingCenter(model: RingModel, ringSize: Dp) {
                 Text("$it", style = NobbyType.countdown.copy(fontSize = numberSp, lineHeight = numberSp), color = if (urgent) c.error else c.onSurface, maxLines = 1)
             }
         }
-        Text(model.labelText(), style = MaterialTheme.typography.titleMedium, color = c.onSurface, textAlign = TextAlign.Center)
-        model.subText()?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.onSurfaceVariant, textAlign = TextAlign.Center) }
+        // One line each: CircleFitColumn scales the stack down to fit inside the beads instead of wrapping or clipping.
+        Text(model.labelText(), style = MaterialTheme.typography.titleMedium, color = c.onSurface, maxLines = 1, softWrap = false)
+        model.subText()?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.onSurfaceVariant, maxLines = 1, softWrap = false) }
         if (model.safety) {
             Row(
                 Modifier.padding(top = 8.dp).clip(CircleShape).background(c.error).padding(horizontal = 10.dp, vertical = 4.dp),
