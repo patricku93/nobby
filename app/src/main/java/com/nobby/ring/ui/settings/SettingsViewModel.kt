@@ -39,14 +39,18 @@ data class ScheduleDraft(
     val timeOfDay: LocalTime,
     val anchor: LocalDateTime,
     val horizonMonths: Int,
+    /** Not edited on this screen; carried through so Apply does not cancel a pending skip-pause. */
+    val skipPauseOnce: Boolean = false,
 ) {
-    fun toConfig(): ScheduleConfig = ScheduleConfig(Method.ring(wearDays, pauseDays, timeOfDay), anchor, horizonMonths)
+    fun toConfig(): ScheduleConfig = ScheduleConfig(Method.ring(wearDays, pauseDays, timeOfDay), anchor, horizonMonths, skipPauseOnce)
     val preview: List<ScheduledEvent> get() = ScheduleEngine.generate(toConfig()).take(4)
     val wearWarning: Boolean get() = wearDays > ScheduleConfig.SAFE_MAX_WEAR
     val pauseWarning: Boolean get() = pauseDays > ScheduleConfig.SAFE_MAX_PAUSE
 
     companion object {
-        fun from(config: ScheduleConfig) = ScheduleDraft(config.method.wearDays, config.method.pauseDays, config.method.timeOfDay, config.anchor, config.horizonMonths)
+        fun from(config: ScheduleConfig) = ScheduleDraft(
+            config.method.wearDays, config.method.pauseDays, config.method.timeOfDay, config.anchor, config.horizonMonths, config.skipPauseOnce,
+        )
     }
 }
 

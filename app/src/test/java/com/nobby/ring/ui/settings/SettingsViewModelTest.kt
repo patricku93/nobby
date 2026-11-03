@@ -78,4 +78,16 @@ class SettingsViewModelTest {
         withContext(Dispatchers.Default) { withTimeout(5_000) { while (changes == 0) delay(10) } }
         assertEquals(1, changes)
     }
+
+    @Test
+    fun `apply keeps a pending skip-pause (M5)`() = runTest(dispatcher) {
+        dispatcher.scheduler.advanceUntilIdle()
+        configStore.save(configStore.config.first()!!.copy(skipPauseOnce = true))
+        vm.startScheduleDraft()
+        vm.draft.first { it != null }
+        vm.updateDraft { it.copy(timeOfDay = LocalTime(20, 0)) }
+        vm.applyDraft()
+        val saved = configStore.config.first { it?.method?.timeOfDay == LocalTime(20, 0) }!!
+        assertEquals(true, saved.skipPauseOnce)
+    }
 }
