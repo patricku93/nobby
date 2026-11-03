@@ -95,4 +95,5 @@ dependencies {
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.junit)
     testImplementation(libs.room.ktx)
+    testImplementation(libs.work.testing)
 }

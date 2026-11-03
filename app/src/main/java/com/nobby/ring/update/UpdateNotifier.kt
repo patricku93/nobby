@@ -14,8 +14,9 @@ import javax.inject.Inject
 /** One quiet notification for a new version; tapping it opens the release page. Same id, so it never stacks. */
 class UpdateNotifier @Inject constructor(@ApplicationContext private val context: Context) : UpdateAnnouncer {
     override fun announce(offer: UpdateResult.Available) {
+        val page = TrustedUrl.check(offer.pageUrl) ?: return // never point a notification at an untrusted host
         val open = PendingIntent.getActivity(
-            context, 0, Intent(Intent.ACTION_VIEW, Uri.parse(offer.pageUrl)),
+            context, 0, Intent(Intent.ACTION_VIEW, Uri.parse(page)),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val n = NotificationCompat.Builder(context, Channels.UPDATES)

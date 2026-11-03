@@ -12,6 +12,7 @@ import com.nobby.ring.update.AppVersion
 import com.nobby.ring.update.UpdateCoordinator
 import com.nobby.ring.update.UpdateResult
 import com.nobby.ring.update.UpdateStore
+import com.nobby.ring.update.TrustedUrl
 import com.nobby.ring.update.selectOffer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -82,7 +83,12 @@ class UpdateViewModel @Inject constructor(
 
 /** Opens [url] in the browser; a device without one must not crash the app. */
 fun Context.openUrl(url: String) {
-    runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+    val trusted = TrustedUrl.check(url)
+    if (trusted == null) {
+        Log.w("NoBby", "Refusing to open an untrusted link")
+        return
+    }
+    runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(trusted))) }
         .onFailure { Log.e("NoBby", "Cannot open $url", it) }
 }
 

@@ -35,10 +35,10 @@ class UpdateStore @Inject constructor(private val dataStore: DataStore<Preferenc
 
     val state: Flow<UpdateState> = dataStore.data.map { p ->
         val version = p[versionKey]
-        val page = p[pageKey]
+        val page = TrustedUrl.check(p[pageKey])
         UpdateState(
             lastCheckAt = p[lastCheckKey],
-            latest = if (version != null && page != null) UpdateResult.Available(version, page, p[apkKey]) else null,
+            latest = if (version != null && page != null) UpdateResult.Available(version, page, TrustedUrl.check(p[apkKey])) else null,
             dismissedVersion = p[dismissedKey],
             notifiedVersion = p[notifiedKey],
         )

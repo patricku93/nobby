@@ -18,6 +18,7 @@ import com.nobby.ring.domain.model.ThemeSpec
 import com.nobby.ring.ui.mascot.MascotMood
 import com.nobby.ring.ui.mascot.MascotMoodKey
 import com.nobby.ring.ui.theme.NobbyTheme
+import com.nobby.ring.update.UpdateResult
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import org.junit.Assert.assertEquals
@@ -142,5 +143,38 @@ class HomeContentTest {
         compose.mainClock.advanceTimeByFrame()
         compose.waitForIdle()
         assertEquals(1, dismissed)
+    }
+
+    private val offer = UpdateResult.Available("2.1.0", "https://github.com/p/n/releases/tag/v2.1.0", null)
+
+    private fun showUpdate(exactAlarms: Boolean, notifications: Boolean) = compose.setContent {
+        NobbyTheme(ThemeSpec()) {
+            HomeContent(
+                HomeUiState(state(LocalDateTime(2026, 11, 12, 12, 0))),
+                exactAlarmsAllowed = exactAlarms, notificationsEnabled = notifications,
+                actions = HomeActions(), update = offer,
+            )
+        }
+    }
+
+    @Test
+    fun `update banner shows when no permission banner shows`() {
+        showUpdate(exactAlarms = true, notifications = true)
+        compose.onNodeWithText("NoBby 2.1.0 is available").assertExists()
+    }
+
+    @Test
+    fun `update banner shows next to a single permission banner`() {
+        showUpdate(exactAlarms = false, notifications = true)
+        compose.onNodeWithText("NoBby 2.1.0 is available").assertExists()
+        compose.onNodeWithText("Exact alarms are off. Reminders may be late.").assertExists()
+    }
+
+    @Test
+    fun `update banner is hidden when both permission banners show`() {
+        showUpdate(exactAlarms = false, notifications = false)
+        compose.onNodeWithText("Exact alarms are off. Reminders may be late.").assertExists()
+        compose.onNodeWithText("Notifications are off. Reminders won't show.").assertExists()
+        compose.onNodeWithText("NoBby 2.1.0 is available").assertDoesNotExist()
     }
 }

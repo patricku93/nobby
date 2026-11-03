@@ -2,6 +2,8 @@ package com.nobby.ring.update
 
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -145,5 +147,20 @@ class UpdateCoordinatorTest {
         val c = UpdateCoordinator(FakeSource(v21), store, { error("no notification") }, { clockMs })
         assertEquals(v21, c.checkNow())
         assertEquals(v21, selectOffer(store.state.first(), current))
+    }
+
+    @Test
+    fun `untrusted links read back from the store are dropped`() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val ds = PreferenceDataStoreFactory.create { File(context.cacheDir, "raw-${System.nanoTime()}.preferences_pb") }
+        val raw = UpdateStore(ds)
+        ds.edit {
+            it[stringPreferencesKey("update_latest_version")] = "2.1.0"
+            it[stringPreferencesKey("update_latest_page")] = "https://github.com/p/n/releases/tag/v2.1.0"
+            it[stringPreferencesKey("update_latest_apk")] = "https://github.com@evil.example/a.apk"
+        }
+        assertEquals(UpdateResult.Available("2.1.0", "https://github.com/p/n/releases/tag/v2.1.0", null), raw.state.first().latest)
+        ds.edit { it[stringPreferencesKey("update_latest_page")] = "https://evil.example/github.com" }
+        assertNull(raw.state.first().latest)
     }
 }

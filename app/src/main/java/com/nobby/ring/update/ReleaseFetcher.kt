@@ -12,12 +12,15 @@ fun interface ReleaseFetcher {
 }
 
 /** Plain [HttpURLConnection]: no extra dependency, no cookies, no user data in the request. */
-class HttpUrlConnectionFetcher : ReleaseFetcher {
+class HttpUrlConnectionFetcher(
+    private val timeoutMs: Int = 10_000,
+    private val maxBodyChars: Int = 256_000,
+) : ReleaseFetcher {
     override fun get(url: String, headers: Map<String, String>): HttpResponse {
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
-            conn.connectTimeout = TIMEOUT_MS
-            conn.readTimeout = TIMEOUT_MS
+            conn.connectTimeout = timeoutMs
+            conn.readTimeout = timeoutMs
             conn.requestMethod = "GET"
             conn.instanceFollowRedirects = true
             headers.forEach { (k, v) -> conn.setRequestProperty(k, v) }
@@ -33,16 +36,11 @@ class HttpUrlConnectionFetcher : ReleaseFetcher {
     private fun readLimited(reader: Reader): String {
         val sb = StringBuilder()
         val buf = CharArray(4096)
-        while (sb.length < MAX_BODY_CHARS) {
+        while (sb.length < maxBodyChars) {
             val n = reader.read(buf)
             if (n < 0) break
             sb.append(buf, 0, n)
         }
         return sb.toString()
-    }
-
-    private companion object {
-        const val TIMEOUT_MS = 10_000
-        const val MAX_BODY_CHARS = 1_000_000
     }
 }

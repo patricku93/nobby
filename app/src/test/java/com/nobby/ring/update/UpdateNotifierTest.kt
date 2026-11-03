@@ -46,4 +46,11 @@ class UpdateNotifierTest {
         UpdateNotifier(context).announce(offer.copy(version = "2.2.0"))
         assertEquals(1, shadowOf(nm).allNotifications.size)
     }
+
+    @Test
+    fun `an untrusted page link posts nothing`() {
+        val nm = context.getSystemService(NotificationManager::class.java)
+        UpdateNotifier(context).announce(offer.copy(pageUrl = "https://github.com@evil.example/"))
+        assertEquals(0, shadowOf(nm).allNotifications.size)
+    }
 }

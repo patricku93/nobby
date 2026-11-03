@@ -99,11 +99,35 @@ class UpdateCheckerTest {
         checker(f).check()
         assertEquals("https://api.github.com/repos/patricku93/nobby/releases/latest", f.lastUrl)
         assertEquals("application/vnd.github+json", f.lastHeaders["Accept"])
+        assertEquals("NoBby/2.0.0", f.lastHeaders["User-Agent"])
+        assertEquals("nothing else identifying", setOf("Accept", "User-Agent"), f.lastHeaders.keys)
         assertEquals(1, f.calls)
     }
 
     @Test
     fun `unparseable current version fails instead of nagging`() = runTest {
         assertEquals(UpdateResult.Failed, checker(ok(release()), current = "weird").check())
+    }
+
+    @Test
+    fun `links must be https on github with no userinfo`() = runTest {
+        listOf(
+            "https://github.com@evil.example/",
+            "https://evil.example/github.com",
+            "http://github.com/patricku93/nobby",
+            "https://github.com.evil.example/x",
+        ).forEach { assertEquals(it, UpdateResult.Failed, checker(ok(release(html = it))).check()) }
+        listOf("https://github.com@evil.example/a.apk", "https://evil.example/a.apk", "http://github.com/a.apk").forEach { u ->
+            val body = release(assets = """[{"name":"a.apk","browser_download_url":"$u"}]""")
+            assertEquals(u, UpdateResult.Available("2.1.0", page, null), checker(ok(body)).check())
+        }
+    }
+
+    @Test
+    fun `github host is accepted in any case and the objects host for apks`() = runTest {
+        val upper = "https://GITHUB.com/patricku93/nobby/releases/tag/v2.1.0"
+        val objects = "https://objects.githubusercontent.com/x/a.apk"
+        val body = release(html = upper, assets = """[{"name":"a.apk","browser_download_url":"$objects"}]""")
+        assertEquals(UpdateResult.Available("2.1.0", upper, objects), checker(ok(body)).check())
     }
 }

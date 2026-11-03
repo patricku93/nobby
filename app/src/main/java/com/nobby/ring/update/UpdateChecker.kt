@@ -29,18 +29,18 @@ class UpdateChecker(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ReleaseSource {
     override suspend fun check(): UpdateResult = try {
-        val response = withContext(dispatcher) { fetcher.get(LATEST_URL, mapOf("Accept" to "application/vnd.github+json")) }
+        val response = withContext(dispatcher) { fetcher.get(LATEST_URL, mapOf("Accept" to "application/vnd.github+json", "User-Agent" to "NoBby/$currentVersion")) }
         evaluate(response)
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        Log.e("NoBby", "update check failed", e)
+        Log.w("NoBby", "update check failed", e)
         UpdateResult.Failed
     }
 
     private fun evaluate(response: HttpResponse): UpdateResult {
         if (response.code !in 200..299) {
-            Log.e("NoBby", "update check: HTTP ${response.code}")
+            Log.w("NoBby", "update check: HTTP ${response.code}")
             return UpdateResult.Failed
         }
         val current = AppVersion.parse(currentVersion)
@@ -58,15 +58,15 @@ class UpdateChecker(
     private fun parseRelease(body: String): Release? = try {
         val json = JSONObject(body)
         val version = AppVersion.parse(json.optString("tag_name"))
-        val page = json.optString("html_url").takeIf(::isHttps)
+        val page = json.optString("html_url").let(TrustedUrl::check)
         if (version == null || page == null) {
-            Log.e("NoBby", "update check: release JSON lacks a usable tag or page link")
+            Log.w("NoBby", "update check: release JSON lacks a usable tag or page link")
             null
         } else {
             Release(version, page, firstApk(json), json.optBoolean("draft") || json.optBoolean("prerelease"))
         }
     } catch (e: JSONException) {
-        Log.e("NoBby", "update check: malformed JSON", e)
+        Log.w("NoBby", "update check: malformed JSON", e)
         null
     }
 
@@ -75,12 +75,10 @@ class UpdateChecker(
         for (i in 0 until assets.length()) {
             val asset = assets.optJSONObject(i) ?: continue
             val url = asset.optString("browser_download_url")
-            if (asset.optString("name").endsWith(".apk", ignoreCase = true) && isHttps(url)) return url
+            if (asset.optString("name").endsWith(".apk", ignoreCase = true) && TrustedUrl.check(url) != null) return url
         }
         return null
     }
-
-    private fun isHttps(url: String): Boolean = url.startsWith("https://")
 
     companion object {
         const val LATEST_URL = "https://api.github.com/repos/patricku93/nobby/releases/latest"
