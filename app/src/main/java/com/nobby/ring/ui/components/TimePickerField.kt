@@ -1,8 +1,9 @@
 package com.nobby.ring.ui.components
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -21,7 +22,7 @@ import kotlinx.datetime.LocalTime
 @Composable
 fun TimePickerField(time: LocalTime, onTimeChange: (LocalTime) -> Unit, label: String, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
-    OutlinedButton(onClick = { open = true }, modifier) { Text("$label: ${formatTime(time)}") }
+    PickerField(label, formatTime(time), Icons.Rounded.Schedule, onClick = { open = true }, modifier = modifier)
     if (open) {
         val state = rememberTimePickerState(time.hour, time.minute, is24Hour = true)
         AlertDialog(

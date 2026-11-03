@@ -1,9 +1,10 @@
 package com.nobby.ring.ui.components
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -25,7 +26,7 @@ import kotlinx.datetime.toLocalDateTime
 @Composable
 fun DatePickerField(date: LocalDate, onDateChange: (LocalDate) -> Unit, label: String, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
-    OutlinedButton(onClick = { open = true }, modifier) { Text("$label: ${formatDate(date)}") }
+    PickerField(label, formatDate(date), Icons.Rounded.CalendarMonth, onClick = { open = true }, modifier = modifier)
     if (open) {
         val state = rememberDatePickerState(initialSelectedDateMillis = date.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds())
         DatePickerDialog(

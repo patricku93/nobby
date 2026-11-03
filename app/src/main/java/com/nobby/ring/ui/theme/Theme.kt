@@ -21,6 +21,6 @@ fun NobbyTheme(theme: ThemeSpec, content: @Composable () -> Unit) {
     val scheme = remember(theme.palette, dark) { theme.palette.colorScheme(dark) }
     val extra = remember(theme.palette, dark) { theme.palette.extraColors(dark) }
     CompositionLocalProvider(LocalNobbyExtraColors provides extra) {
-        MaterialTheme(colorScheme = scheme, typography = NobbyTypography, content = content)
+        MaterialTheme(colorScheme = scheme, typography = NobbyTypography, shapes = NobbyShapes, content = content)
     }
 }
