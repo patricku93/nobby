@@ -233,18 +233,19 @@ private fun NextSection(state: ScheduleState, model: RingModel, busy: Boolean, a
         val safety = if (!overdue.safetyBreached) null
         else stringResource(if (overdue.event.kind == EventKind.INSERT) R.string.home_overdue_safety_pause else R.string.home_overdue_safety_wear)
         OverdueCard(overdue.event.kind, overdue.event.plannedAt, overText, safety, actions.onDone, actions.onSnooze, enabled = !busy)
-        // Skip-pause only turns the next REMOVE into a SWAP, so it stays reachable while a REMOVE is overdue.
-        if (overdue.event.kind == EventKind.REMOVE) SkipPauseToggle(state, busy, actions)
+        if (SkipPauseRule.isOffered(state)) SkipPauseToggle(state, busy, actions)
         return
     }
     val next = state.nextEvent ?: return
     val days = state.daysUntilNext ?: return
-    NextEventCard(next.kind, next.plannedAt, days, actions = {
+    val skip = SkipPauseRule.isOffered(state)
+    // No empty action row in the pause before the insertion is due.
+    NextEventCard(next.kind, next.plannedAt, days, actions = if (!state.isDue && !skip) null else ({
         if (state.isDue) {
             NobbyButton(actions.onDone, enabled = !busy, icon = Icons.Rounded.Check) { Text(stringResource(R.string.home_mark_done)) }
         }
-        SkipPauseToggle(state, busy, actions)
-    })
+        if (skip) SkipPauseToggle(state, busy, actions)
+    }))
 }
 
 @Composable

@@ -110,6 +110,26 @@ class HomeContentTest {
     }
 
     @Test
+    fun `overdue swap offers keep the break and tapping it fires the action`() {
+        var toggled = 0
+        val skipping = ScheduleRepository.buildState(config.copy(skipPauseOnce = true), emptyList(), LocalDateTime(2026, 11, 24, 22, 0))
+        compose.setContent {
+            NobbyTheme(ThemeSpec()) {
+                HomeContent(HomeUiState(skipping), exactAlarmsAllowed = true, notificationsEnabled = true, actions = HomeActions(onToggleSkipPause = { toggled++ }))
+            }
+        }
+        compose.onNodeWithText("Keep the break").performScrollTo().performClick()
+        assertEquals(1, toggled)
+    }
+
+    @Test
+    fun `pause does not offer skip break`() {
+        showRing(LocalDateTime(2026, 11, 25, 12, 0), listOf(removed))
+        compose.onNodeWithText("Skip break").assertDoesNotExist()
+        compose.onNodeWithText("Keep the break").assertDoesNotExist()
+    }
+
+    @Test
     fun `removing the done sheet from composition dismisses the celebration`() {
         compose.mainClock.autoAdvance = false
         var show by mutableStateOf(true)

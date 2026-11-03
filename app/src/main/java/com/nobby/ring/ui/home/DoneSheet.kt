@@ -62,6 +62,7 @@ import com.nobby.ring.ui.theme.NobbyMotion
 import com.nobby.ring.ui.theme.NobbyRadius
 import com.nobby.ring.ui.theme.NobbyTheme
 import com.nobby.ring.ui.theme.reducedMotion
+import kotlinx.coroutines.delay
 import kotlinx.datetime.LocalDateTime
 import kotlin.math.roundToInt
 
@@ -97,10 +98,14 @@ fun DoneSheet(celebration: Celebration, onDismiss: () -> Unit, modifier: Modifie
         enter.animateTo(1f, tween(if (reduced) NobbyMotion.SHORT else NobbyMotion.LONG, easing = NobbyMotion.Decelerate))
     }
     LaunchedEffect(celebration) { if (!reduced) pop.animateTo(1f, NobbyMotion.squishSpring()) }
+    // The auto-close is a real 4 s timer: Compose scales animations by the animator duration scale, so with
+    // "Remove animations" a tween would end on the next frame and close the sheet before anyone saw it.
     LaunchedEffect(celebration) {
-        countdown.animateTo(0f, tween(AUTO_DISMISS_MS.toInt(), easing = LinearEasing))
+        delay(AUTO_DISMISS_MS)
         dismiss()
     }
+    // The bar is decoration only; with reduced motion it stays hidden instead of jumping to empty.
+    LaunchedEffect(celebration) { if (!reduced) countdown.animateTo(0f, tween(AUTO_DISMISS_MS.toInt(), easing = LinearEasing)) }
 
     Box(modifier.fillMaxSize().testTag(DONE_SHEET_TAG)) {
         Box(
@@ -150,15 +155,17 @@ fun DoneSheet(celebration: Celebration, onDismiss: () -> Unit, modifier: Modifie
                 textAlign = TextAlign.Center,
             )
             if (celebration.nextKind != null && celebration.nextAt != null) NextRow(celebration.nextKind, celebration.nextAt)
-            LinearProgressIndicator(
-                progress = { countdown.value },
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(4.dp),
-                color = c.outline,
-                trackColor = c.surfaceContainerHighest,
-            )
+            if (!reduced) {
+                LinearProgressIndicator(
+                    progress = { countdown.value },
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(4.dp),
+                    color = c.outline,
+                    trackColor = c.surfaceContainerHighest,
+                )
+            }
             Text(
                 stringResource(R.string.done_autoclose),
-                Modifier.padding(top = 8.dp),
+                Modifier.padding(top = if (reduced) 16.dp else 8.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = c.onSurfaceVariant,
             )
