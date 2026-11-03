@@ -1,5 +1,6 @@
 package com.nobby.ring.ui.settings
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -135,7 +136,9 @@ private fun LicenceDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
     val text = remember {
         listOf(R.raw.ofl_fredoka, R.raw.ofl_nunito_sans).joinToString("\n\n") { id ->
-            context.resources.openRawResource(id).bufferedReader().use { it.readText() }
+            runCatching { context.resources.openRawResource(id).bufferedReader().use { it.readText() } }
+                .onFailure { Log.e("NoBby", "Cannot read licence text $id", it) }
+                .getOrDefault("")
         }
     }
     AlertDialog(

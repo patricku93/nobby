@@ -49,6 +49,9 @@ class CalendarViewModelTest {
         Dispatchers.setMain(dispatcher)
         val context = ApplicationProvider.getApplicationContext<Context>()
         db = Room.inMemoryDatabaseBuilder(context, NobbyDatabase::class.java).allowMainThreadQueries().build()
+        // Open it here, on the test thread: a lazy first open (onOpen -> invalidation tracker) on a Room IO thread
+        // can race tearDown's close() and deadlock the test JVM.
+        db.openHelper.writableDatabase
         val ds = PreferenceDataStoreFactory.create { File(context.cacheDir, "cal-${System.nanoTime()}.preferences_pb") }
         vm = CalendarViewModel(ScheduleRepository(MethodConfigStore(ds), db.eventLogDao(), clock), NotesRepository(db.noteDao(), clock), clock)
     }

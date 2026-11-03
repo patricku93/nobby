@@ -53,8 +53,6 @@ class PaletteSchemeTest {
         val r = Palette.LILAC.roles(false)
         val x = Palette.LILAC.extraColors(false)
         assertFalse(x.dark)
-        assertEquals(r.primaryContainer, x.wearBand)
-        assertEquals(r.secondaryContainer, x.pauseBand)
         assertEquals(r.accent, x.sticker)
         assertEquals(r.mascot, x.mascotBody)
         assertEquals(r.mascotCheek, x.mascotCheek)

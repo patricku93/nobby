@@ -11,10 +11,6 @@ import com.nobby.ring.domain.model.Palette
 @Immutable
 data class NobbyExtraColors(
     val dark: Boolean,
-    /** Calendar wear highlighter band (primaryContainer). */
-    val wearBand: Color,
-    /** Calendar pause highlighter band (secondaryContainer). */
-    val pauseBand: Color,
     /** Sticker accent: washi tape, sparkle, note dot (tokens `accent`, butter in berry). */
     val sticker: Color,
     val mascotBody: Color,
@@ -30,8 +26,6 @@ data class NobbyExtraColors(
 
 fun PresetRoles.extraColors(dark: Boolean): NobbyExtraColors = NobbyExtraColors(
     dark = dark,
-    wearBand = primaryContainer,
-    pauseBand = secondaryContainer,
     sticker = accent,
     mascotBody = mascot,
     mascotCheek = mascotCheek,

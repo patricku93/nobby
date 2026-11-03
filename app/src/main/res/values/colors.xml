@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- tokens.json presets.berry.light.background: the window shows this before Compose draws. -->
+    <!-- tokens.json presets.berry.light.background: the window shows this before Compose draws.
+         Allowed hex exception (window background, fixed to Berry like the launcher icon): a non-Berry preset or a
+         forced app mode may flash this colour for one frame before Compose paints the themed surface. -->
     <color name="nobby_paper">#FBF5EE</color>
 </resources>
