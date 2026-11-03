@@ -34,14 +34,17 @@ data class RingModel(
             val overdue = state.overdue
             return when {
                 overdue != null -> {
-                    val overDays = -(days ?: 0)
-                    val byDays = overDays >= 1
+                    val amount = OverdueAmount.of(overdue.delay)
+                    val byDays = amount is OverdueAmount.Days
                     RingModel(
                         tone = if (overdue.safetyBreached) RingTone.SAFETY else RingTone.OVERDUE,
                         mood = if (overdue.safetyBreached) MascotMood.ALERT else MascotMood.WORRIED,
                         beads = beads,
                         done = beads,
-                        number = if (byDays) overDays else overdue.delay.inWholeHours.toInt().coerceAtLeast(1),
+                        number = when (amount) {
+                            is OverdueAmount.Days -> amount.days
+                            is OverdueAmount.Hours -> amount.hours
+                        },
                         label = if (byDays) RingLabel.OVERDUE_DAYS else RingLabel.OVERDUE_HOURS,
                         event = overdue.event,
                         safety = overdue.safetyBreached,

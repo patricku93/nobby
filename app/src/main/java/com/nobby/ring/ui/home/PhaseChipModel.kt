@@ -7,6 +7,7 @@ import com.nobby.ring.domain.model.PhaseKind
 import com.nobby.ring.domain.model.ScheduleState
 import com.nobby.ring.ui.components.label
 import com.nobby.ring.ui.components.plural
+import com.nobby.ring.ui.ring.OverdueAmount
 
 /** What the phase chip on Home says. While an event is overdue it shows the overdue amount instead of "day 9 of 7". */
 sealed interface PhaseChipModel {
@@ -19,10 +20,16 @@ sealed interface PhaseChipModel {
     companion object {
         fun from(state: ScheduleState): PhaseChipModel {
             val p = state.position
-            val overdue = state.overdue
-                ?: return InPhase(p.phase, p.dayInPhase.coerceAtMost(p.phaseLengthDays.coerceAtLeast(1)), p.phaseLengthDays)
-            val days = -(state.daysUntilNext ?: 0)
-            return if (days >= 1) OverDays(p.phase, days) else OverHours(p.phase, overdue.delay.inWholeHours.toInt().coerceAtLeast(1))
+            val amount = OverdueAmount.of(state) ?: return inPhase(p.phase, p.dayInPhase, p.phaseLengthDays)
+            return overdue(p.phase, amount)
+        }
+
+        /** "Day X of N" with X never above N. */
+        fun inPhase(phase: PhaseKind, day: Int, length: Int): InPhase = InPhase(phase, day.coerceAtMost(length.coerceAtLeast(1)), length)
+
+        fun overdue(phase: PhaseKind, amount: OverdueAmount): PhaseChipModel = when (amount) {
+            is OverdueAmount.Days -> OverDays(phase, amount.days)
+            is OverdueAmount.Hours -> OverHours(phase, amount.hours)
         }
     }
 }

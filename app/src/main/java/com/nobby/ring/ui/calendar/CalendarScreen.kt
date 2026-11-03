@@ -41,6 +41,7 @@ import com.nobby.ring.ui.components.NobbyButton
 import com.nobby.ring.ui.components.NobbyTopBar
 import com.nobby.ring.ui.components.NoteCard
 import com.nobby.ring.ui.components.formatLongDate
+import com.nobby.ring.ui.home.text
 import com.nobby.ring.ui.mascot.MascotMood
 import com.nobby.ring.ui.mascot.Nobby
 import com.nobby.ring.ui.theme.NobbyRadius
@@ -111,9 +112,9 @@ private fun SelectedDayCard(ui: CalendarUiState, onNote: (String) -> Unit) {
     val day = ui.days.firstOrNull { it.date == ui.selected }
     NoteCard {
         Text(formatLongDate(ui.selected), style = MaterialTheme.typography.titleMedium)
-        if (day != null && day.phase != DayPhase.NONE) {
+        day?.card?.let { card ->
             Text(
-                stringResource(R.string.phase_day, day.phase.label(), day.dayInPhase, day.phaseLength),
+                card.text(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

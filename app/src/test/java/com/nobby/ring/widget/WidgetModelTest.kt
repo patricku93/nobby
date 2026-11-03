@@ -40,7 +40,7 @@ class WidgetModelTest {
         val data = WidgetModel.build(state, WidgetConfig(WidgetMode.MULTI, listOf(WidgetRow.NEXT_INSERT, WidgetRow.OVERDUE, WidgetRow.CYCLE_DAY)), strings)
         assertEquals(3, data.rows.size)
         assertEquals("in 5 d", data.rows[0].value)
-        assertEquals("2 d overdue", data.rows[1].value)
+        assertEquals("1 d overdue", data.rows[1].value) // 39 h late: one whole day, not two calendar days
         assertTrue(data.rows[1].urgent)
         assertEquals("Day 24 of 28", data.rows[2].value)
         assertEquals("REMOVE@2026-11-22T21:00", data.dueEventId)
@@ -93,5 +93,18 @@ class WidgetModelTest {
         assertEquals(MascotMood.NEUTRAL, data.mood)
         assertEquals("REMOVE@2026-11-22T21:00", data.dueEventId)
         assertEquals("21/21", data.dayLabel)
+    }
+
+    @Test
+    fun `single headline and multi rows agree on hours across midnight`() {
+        // Event at 22:00, now 01:00: every surface says 3 hours, none says "1 day".
+        val late = ScheduleConfig(Method.ring(21, 7, LocalTime(22, 0)), LocalDateTime(2026, 11, 1, 22, 0), 2)
+        val state = ScheduleRepository.buildState(late, emptyList(), LocalDateTime(2026, 11, 23, 1, 0))
+        val single = WidgetModel.build(state, WidgetConfig(WidgetMode.SINGLE, emptyList()), v2)
+        val multi = WidgetModel.build(state, WidgetConfig(WidgetMode.MULTI, listOf(WidgetRow.NEXT_ANY, WidgetRow.OVERDUE)), v2)
+        assertEquals(WidgetHeadline("3", "OVERDUE_HOURS 3"), single.headline)
+        assertEquals("3 h overdue", single.rows[0].value)
+        assertEquals("3 h overdue", multi.rows[0].value)
+        assertEquals("3 h overdue", multi.rows[1].value)
     }
 }

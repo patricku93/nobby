@@ -35,4 +35,13 @@ class PhaseChipModelTest {
     @Test
     fun `insertion two days overdue shows the pause over, not day 9 of 7 (v1_1 fix 1)`() =
         assertEquals(PhaseChipModel.OverDays(PhaseKind.PAUSE, 2), at(LocalDateTime(2026, 12, 1, 22, 0), listOf(removed)))
+
+    @Test
+    fun `3 h across midnight shows hours, not one day`() {
+        val late = ScheduleConfig(Method.ring(21, 7, LocalTime(22, 0)), LocalDateTime(2026, 11, 1, 22, 0))
+        assertEquals(
+            PhaseChipModel.OverHours(PhaseKind.WEAR, 3),
+            PhaseChipModel.from(ScheduleRepository.buildState(late, emptyList(), LocalDateTime(2026, 11, 23, 1, 0))),
+        )
+    }
 }

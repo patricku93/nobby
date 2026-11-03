@@ -75,4 +75,12 @@ class RingModelTest {
         assertEquals(4, m.number)
         assertEquals(RingLabel.UNTIL_INSERT, m.label)
     }
+
+    @Test
+    fun `3 h across midnight counts hours, not one calendar day`() {
+        val late = ScheduleConfig(Method.ring(21, 7, LocalTime(22, 0)), LocalDateTime(2026, 11, 1, 22, 0))
+        val m = RingModel.from(ScheduleRepository.buildState(late, emptyList(), LocalDateTime(2026, 11, 23, 1, 0)))
+        assertEquals(RingLabel.OVERDUE_HOURS, m.label)
+        assertEquals(3, m.number)
+    }
 }

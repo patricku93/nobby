@@ -9,9 +9,9 @@ import com.nobby.ring.domain.model.WidgetMode
 import com.nobby.ring.domain.model.WidgetRow
 import com.nobby.ring.ui.components.RingTone
 import com.nobby.ring.ui.mascot.MascotMood
+import com.nobby.ring.ui.ring.OverdueAmount
 import com.nobby.ring.ui.ring.RingLabel
 import com.nobby.ring.ui.ring.RingModel
-import kotlin.time.Duration.Companion.hours
 
 data class WidgetStrings(
     val nextAny: String, val nextRemove: String, val nextInsert: String, val overdue: String, val cycleDay: String, val none: String,
@@ -69,7 +69,7 @@ object WidgetModel {
         WidgetRow.OVERDUE -> {
             val o = state.overdue
             if (o == null) WidgetRowData(row, s.overdue, "–", false)
-            else WidgetRowData(row, s.overdue, overdueText(o, state, s), true)
+            else WidgetRowData(row, s.overdue, overdueText(o, s), true)
         }
         WidgetRow.CYCLE_DAY -> WidgetRowData(row, s.cycleDay, s.cycleDayFmt(state.position.dayInCycle, state.position.cycleLengthDays), false)
     }
@@ -79,14 +79,15 @@ object WidgetModel {
         val days = daysUntil(event, state)
         val label = labelOverride ?: s.kindLabel(event.kind)
         val overdue = state.overdue?.takeIf { it.event.id == event.id }
-        if (overdue != null) return WidgetRowData(row, label, overdueText(overdue, state, s), true)
+        if (overdue != null) return WidgetRowData(row, label, overdueText(overdue, s), true)
         return if (days < 0) WidgetRowData(row, label, s.overdueDays(-days), true) else WidgetRowData(row, label, s.inDays(days), false)
     }
 
-    /** Under one day the overdue time is shown in hours (at least 1), otherwise in calendar days. */
-    private fun overdueText(o: OverdueInfo, state: ScheduleState, s: WidgetStrings): String =
-        if (o.delay < 24.hours) s.overdueHours(o.delay.inWholeHours.toInt().coerceAtLeast(1))
-        else s.overdueDays(-daysUntil(o.event, state))
+    /** Same rule as the Home ring and the Single headline: [OverdueAmount]. */
+    private fun overdueText(o: OverdueInfo, s: WidgetStrings): String = when (val amount = OverdueAmount.of(o.delay)) {
+        is OverdueAmount.Hours -> s.overdueHours(amount.hours)
+        is OverdueAmount.Days -> s.overdueDays(amount.days)
+    }
 
     private fun daysUntil(event: ScheduledEvent, state: ScheduleState): Int =
         event.plannedAt.date.toEpochDays() - state.now.date.toEpochDays()
