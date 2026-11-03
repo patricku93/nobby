@@ -107,4 +107,13 @@ class WidgetModelTest {
         assertEquals("3 h overdue", multi.rows[0].value)
         assertEquals("3 h overdue", multi.rows[1].value)
     }
+
+    @Test
+    fun `overdue names the unit in the day label instead of a full phase (D10)`() {
+        val state = ScheduleRepository.buildState(config, emptyList(), LocalDateTime(2026, 11, 25, 12, 0)) // REMOVE 2 d 15 h late
+        val data = WidgetModel.build(state, WidgetConfig(WidgetMode.SINGLE, emptyList()), v2)
+        assertEquals(WidgetHeadline("2", "OVERDUE_DAYS 2"), data.headline)
+        assertEquals("OVERDUE_DAYS 2", data.dayLabel)
+        assertEquals("REMOVE@2026-11-22T21:00", data.dueEventId)
+    }
 }

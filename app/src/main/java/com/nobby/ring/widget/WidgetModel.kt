@@ -45,14 +45,16 @@ object WidgetModel {
         val ring = RingModel.from(state)
         val p = state.position
         val length = p.phaseLengthDays.coerceAtLeast(1)
+        val head = headline(ring, s)
         return WidgetData(
             rows = rows.map { row(it, state, s) },
             dueEventId = due,
-            headline = headline(ring, s),
+            headline = head,
             progress = (p.dayInPhase.toFloat() / length).coerceIn(0f, 1f),
             mood = ring.mood,
             tone = ring.tone,
-            dayLabel = s.dayOf(p.dayInPhase.coerceAtMost(length), p.phaseLengthDays),
+            // While overdue a full "Day 21/21" is misleading and the big number needs its unit: name it here, as Home does.
+            dayLabel = if (state.overdue != null) head.label else s.dayOf(p.dayInPhase.coerceAtMost(length), p.phaseLengthDays),
         )
     }
 

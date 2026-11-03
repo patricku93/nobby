@@ -151,7 +151,8 @@ private fun SmallLayout(d: WidgetData, p: WidgetPalette) {
 private fun SquareLayout(d: WidgetData, p: WidgetPalette, labels: WidgetLabels) {
     Column(GlanceModifier.fillMaxSize()) {
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-            Text(d.dayLabel, GlanceModifier.defaultWeight(), style = text(p.of { it.sub }, 13), maxLines = 1)
+            // Two lines beside the 40 dp face: "Tag 21/21" or the overdue unit never get cut at 2 columns.
+            Text(d.dayLabel, GlanceModifier.defaultWeight(), style = text(p.of { if (d.urgent()) it.err else it.sub }, 13), maxLines = 2)
             WidgetFace(d.mood, p, 40.dp)
         }
         Spacer(GlanceModifier.defaultWeight())
@@ -171,7 +172,8 @@ private fun SquareLayout(d: WidgetData, p: WidgetPalette, labels: WidgetLabels) 
 private fun WideLayout(d: WidgetData, p: WidgetPalette, labels: WidgetLabels) {
     Row(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
         Column(GlanceModifier.defaultWeight()) {
-            Text(d.dayLabel, style = text(p.of { it.sub }, 13), maxLines = 1)
+            // While overdue the day label is the unit, which the label below already shows.
+            if (!d.urgent()) Text(d.dayLabel, style = text(p.of { it.sub }, 13), maxLines = 1)
             Text(d.head().number, style = text(p.of { if (d.urgent()) it.err else it.fg }, d.numberSize(), FontWeight.Bold), maxLines = 1)
             Text(d.head().label, style = text(p.of { it.sub }, 13), maxLines = 2)
         }
