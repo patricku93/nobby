@@ -170,6 +170,7 @@
     <string name="overdue_snooze">„Später“ erinnert in (Std.)</string>
 
     <!-- Mitteilungen -->
+    <string name="channel_updates">Updates</string>
     <string name="channel_low">Leise Erinnerungen</string>
     <string name="channel_normal">Erinnerungen</string>
     <string name="channel_high">Wichtige Erinnerungen</string>
@@ -227,6 +228,17 @@
     <string name="settings_widget">Widget</string>
     <string name="settings_about">Über NoBby</string>
     <string name="settings_about_version">Version %1$s</string>
+    <string name="settings_update_check">Nach Updates suchen</string>
+    <string name="settings_update_checking">Ich schaue nach …</string>
+    <string name="settings_update_current">Du hast die neueste Version.</string>
+    <string name="settings_update_available">Version %1$s ist da.</string>
+    <string name="settings_update_failed">Das hat nicht geklappt. Bist du online?</string>
+    <string name="settings_update_privacy">NoBby fragt nur bei GitHub nach neuen Versionen und sendet dabei keine persönlichen Daten.</string>
+    <string name="update_banner">Neue NoBby-Version %1$s ist da</string>
+    <string name="update_action_download">Laden</string>
+    <string name="update_action_later">Später</string>
+    <string name="update_notif_title">Neue NoBby-Version</string>
+    <string name="update_notif_body">Version %1$s steht zum Download bereit.</string>
     <string name="settings_about_body">NoBby ist eine Erinnerungshilfe, keine medizinische Beratung. Halte dich an den Beipackzettel und frag im Zweifel in der Arztpraxis oder Apotheke.</string>
     <string name="settings_licenses">Schriftlizenzen (OFL)</string>
     <string name="schedule_preview_title">Vorschau</string>

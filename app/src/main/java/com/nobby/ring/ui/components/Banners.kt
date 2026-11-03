@@ -25,7 +25,15 @@ import com.nobby.ring.ui.theme.NobbyTheme
 
 /** Compact, non-alarming hint (butter tertiaryContainer; dark: surfaceContainerHigh + tertiary hairline). */
 @Composable
-fun PermissionBanner(text: String, icon: ImageVector, actionLabel: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun PermissionBanner(
+    text: String,
+    icon: ImageVector,
+    actionLabel: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    secondaryLabel: String? = null,
+    onSecondary: () -> Unit = {},
+) {
     val c = MaterialTheme.colorScheme
     val dark = NobbyTheme.extra.dark
     val shape = RoundedCornerShape(NobbyRadius.md)
@@ -50,5 +58,13 @@ fun PermissionBanner(text: String, icon: ImageVector, actionLabel: String, onCli
             style = MaterialTheme.typography.labelLarge.copy(textDecoration = TextDecoration.Underline),
             color = if (dark) c.tertiary else c.onTertiaryContainer,
         )
+        if (secondaryLabel != null) {
+            Text(
+                secondaryLabel,
+                Modifier.clickable(role = Role.Button, onClick = onSecondary).padding(horizontal = 12.dp, vertical = 8.dp),
+                style = MaterialTheme.typography.labelLarge,
+                color = fg,
+            )
+        }
     }
 }

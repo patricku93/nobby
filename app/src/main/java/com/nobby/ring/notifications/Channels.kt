@@ -13,6 +13,7 @@ object Channels {
     const val NORMAL = "nobby_normal"
     const val HIGH = "nobby_high"
     const val URGENT = "nobby_urgent"
+    const val UPDATES = "nobby_updates"
 
     fun idFor(importance: Importance): String = when (importance) {
         Importance.LOW -> LOW
@@ -24,6 +25,7 @@ object Channels {
     fun create(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(LOW, context.getString(R.string.channel_low), NotificationManager.IMPORTANCE_LOW))
+        nm.createNotificationChannel(NotificationChannel(UPDATES, context.getString(R.string.channel_updates), NotificationManager.IMPORTANCE_LOW))
         nm.createNotificationChannel(NotificationChannel(NORMAL, context.getString(R.string.channel_normal), NotificationManager.IMPORTANCE_DEFAULT))
         nm.createNotificationChannel(
             NotificationChannel(HIGH, context.getString(R.string.channel_high), NotificationManager.IMPORTANCE_HIGH).apply { enableVibration(true) },

@@ -53,9 +53,17 @@ import com.nobby.ring.ui.mascot.MascotProp
 import com.nobby.ring.ui.mascot.Nobby
 import com.nobby.ring.ui.navigation.Routes
 import com.nobby.ring.ui.theme.NobbySpace
+import com.nobby.ring.ui.update.UpdateCheckUi
+import com.nobby.ring.ui.update.UpdateViewModel
+import com.nobby.ring.ui.update.downloadUrl
+import com.nobby.ring.ui.update.openUrl
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 
 @Composable
-fun SettingsScreen(onNavigate: (String) -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onNavigate: (String) -> Unit, viewModel: SettingsViewModel = hiltViewModel(), updates: UpdateViewModel = hiltViewModel()) {
+    val updateCheck by updates.check.collectAsStateWithLifecycle()
     val schedule by viewModel.schedule.collectAsStateWithLifecycle()
     val rules by viewModel.rules.collectAsStateWithLifecycle()
     val overdue by viewModel.overdue.collectAsStateWithLifecycle()
@@ -107,14 +115,14 @@ fun SettingsScreen(onNavigate: (String) -> Unit, viewModel: SettingsViewModel = 
                     onClick = { onNavigate(Routes.SETTINGS_WIDGET) },
                 )
             }
-            AboutCard(onLicences = { showLicences = true })
+            AboutCard(onLicences = { showLicences = true }, updateCheck = updateCheck, onCheck = updates::checkNow)
         }
     }
 }
 
 /** Settings > Über NoBby: the only mascot on this screen (happy + wave), safety line right below. */
 @Composable
-private fun AboutCard(onLicences: () -> Unit) {
+private fun AboutCard(onLicences: () -> Unit, updateCheck: UpdateCheckUi, onCheck: () -> Unit) {
     NobbyCard(tone = CardTone.TONAL) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Nobby(MascotMood.HAPPY, 96.dp, prop = MascotProp.WAVE)
@@ -124,9 +132,37 @@ private fun AboutCard(onLicences: () -> Unit) {
             }
         }
         Text(stringResource(R.string.settings_about_body), Modifier.padding(top = 12.dp), style = MaterialTheme.typography.bodyMedium)
+        UpdateCheckRow(updateCheck, onCheck)
         NobbyButton(onLicences, Modifier.padding(top = 4.dp), tone = ButtonTone.TEXT, contentColor = LocalContentColor.current) {
             Text(stringResource(R.string.settings_licenses))
         }
+    }
+}
+
+/** Manual update check with the result inline, and the one-line privacy note about the only network use. */
+@Composable
+private fun UpdateCheckRow(check: UpdateCheckUi, onCheck: () -> Unit) {
+    val context = LocalContext.current
+    Text(stringResource(R.string.settings_update_privacy), Modifier.padding(top = 12.dp), style = MaterialTheme.typography.bodySmall)
+    Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        NobbyButton(onCheck, enabled = check != UpdateCheckUi.Checking, tone = ButtonTone.TEXT, contentColor = LocalContentColor.current) {
+            Text(stringResource(R.string.settings_update_check))
+        }
+        if (check is UpdateCheckUi.Available) {
+            NobbyButton({ context.openUrl(check.offer.downloadUrl()) }, tone = ButtonTone.TEXT, contentColor = LocalContentColor.current) {
+                Text(stringResource(R.string.update_action_download))
+            }
+        }
+    }
+    val message = when (check) {
+        UpdateCheckUi.Idle -> null
+        UpdateCheckUi.Checking -> stringResource(R.string.settings_update_checking)
+        UpdateCheckUi.UpToDate -> stringResource(R.string.settings_update_current)
+        is UpdateCheckUi.Available -> stringResource(R.string.settings_update_available, check.offer.version)
+        UpdateCheckUi.Failed -> stringResource(R.string.settings_update_failed)
+    }
+    if (message != null) {
+        Text(message, Modifier.semantics { liveRegion = LiveRegionMode.Polite }, style = MaterialTheme.typography.bodyMedium)
     }
 }
 

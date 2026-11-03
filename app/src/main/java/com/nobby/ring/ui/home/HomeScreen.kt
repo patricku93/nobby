@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AlarmOff
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.NotificationsOff
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -78,6 +79,10 @@ import com.nobby.ring.ui.ring.RingLabel
 import com.nobby.ring.ui.ring.RingModel
 import com.nobby.ring.ui.theme.NobbySpace
 import com.nobby.ring.ui.theme.NobbyType
+import com.nobby.ring.ui.update.UpdateViewModel
+import com.nobby.ring.ui.update.downloadUrl
+import com.nobby.ring.ui.update.openUrl
+import com.nobby.ring.update.UpdateResult
 import kotlinx.datetime.LocalDateTime
 
 /** Callbacks of the Home screen, so [HomeContent] stays stateless and testable. */
@@ -90,10 +95,12 @@ data class HomeActions(
     val onDismissConfirm: () -> Unit = {},
     val onDismissCelebration: () -> Unit = {},
     val onPermissionResult: () -> Unit = {},
+    val onUpdateLater: (String) -> Unit = {},
 )
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(viewModel: HomeViewModel = hiltViewModel(), updates: UpdateViewModel = hiltViewModel()) {
+    val update by updates.offer.collectAsStateWithLifecycle()
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val exactAlarmsAllowed by viewModel.exactAlarmsAllowed.collectAsStateWithLifecycle()
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsStateWithLifecycle()
@@ -112,20 +119,31 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
             onDismissConfirm = viewModel::dismissConfirm,
             onDismissCelebration = viewModel::dismissCelebration,
             onPermissionResult = viewModel::refreshPermissions,
+            onUpdateLater = updates::dismiss,
         ),
+        update,
     )
 }
 
 @Composable
-fun HomeContent(ui: HomeUiState, exactAlarmsAllowed: Boolean, notificationsEnabled: Boolean, actions: HomeActions) {
+fun HomeContent(
+    ui: HomeUiState,
+    exactAlarmsAllowed: Boolean,
+    notificationsEnabled: Boolean,
+    actions: HomeActions,
+    update: UpdateResult.Available? = null,
+) {
     val state = ui.state ?: return
     ui.pendingConfirm?.let { ConfirmDialog(it, actions.onConfirmTime, actions.onPolicy, actions.onDismissConfirm) }
     val model = RingModel.from(state)
-    val compact = !exactAlarmsAllowed || !notificationsEnabled
+    // The update hint is the lowest priority: never a third banner next to the two permission hints.
+    val permissionHints = listOf(exactAlarmsAllowed, notificationsEnabled).count { !it }
+    val shownUpdate = update.takeIf { permissionHints < 2 }
+    val compact = permissionHints > 0 || shownUpdate != null
     Box(Modifier.fillMaxSize()) {
         Scaffold(topBar = { HomeTopBar(state) }) { padding ->
             BoxWithConstraints(Modifier.padding(padding).fillMaxSize()) {
-                val parts = HomeParts(state, ui, model, compact, exactAlarmsAllowed, notificationsEnabled, actions)
+                val parts = HomeParts(state, ui, model, compact, exactAlarmsAllowed, notificationsEnabled, actions, shownUpdate)
                 if (maxWidth > maxHeight) HomeLandscape(parts, maxHeight) else HomePortrait(parts)
             }
         }
@@ -142,6 +160,7 @@ private data class HomeParts(
     val exactAlarmsAllowed: Boolean,
     val notificationsEnabled: Boolean,
     val actions: HomeActions,
+    val update: UpdateResult.Available?,
 )
 
 @Composable
@@ -193,6 +212,7 @@ private fun Banners(p: HomeParts) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(NobbySpace.s)) {
         if (!p.notificationsEnabled) NotificationsBanner(p.actions.onPermissionResult)
         if (!p.exactAlarmsAllowed) ExactAlarmBanner()
+        p.update?.let { UpdateBanner(it, p.actions.onUpdateLater) }
     }
 }
 
@@ -370,6 +390,17 @@ private fun NotificationsBanner(onResult: () -> Unit) {
             ctx.startSettings(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName))
         }
     })
+}
+
+@Composable
+private fun UpdateBanner(offer: UpdateResult.Available, onLater: (String) -> Unit) {
+    val ctx = LocalContext.current
+    PermissionBanner(
+        stringResource(R.string.update_banner, offer.version), Icons.Rounded.SystemUpdate, stringResource(R.string.update_action_download),
+        onClick = { ctx.openUrl(offer.downloadUrl()) },
+        secondaryLabel = stringResource(R.string.update_action_later),
+        onSecondary = { onLater(offer.version) },
+    )
 }
 
 private fun Context.startSettings(intent: Intent) {

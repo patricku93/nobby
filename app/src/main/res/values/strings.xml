@@ -170,6 +170,7 @@
     <string name="overdue_snooze">Snooze for (hours)</string>
 
     <!-- notifications -->
+    <string name="channel_updates">Updates</string>
     <string name="channel_low">Quiet reminders</string>
     <string name="channel_normal">Reminders</string>
     <string name="channel_high">Important reminders</string>
@@ -227,6 +228,17 @@
     <string name="settings_widget">Widget</string>
     <string name="settings_about">About NoBby</string>
     <string name="settings_about_version">Version %1$s</string>
+    <string name="settings_update_check">Check for updates</string>
+    <string name="settings_update_checking">Checking …</string>
+    <string name="settings_update_current">You have the latest version.</string>
+    <string name="settings_update_available">Version %1$s is available.</string>
+    <string name="settings_update_failed">That did not work. Are you online?</string>
+    <string name="settings_update_privacy">NoBby only contacts GitHub to look for new versions and sends no personal data.</string>
+    <string name="update_banner">NoBby %1$s is available</string>
+    <string name="update_action_download">Download</string>
+    <string name="update_action_later">Later</string>
+    <string name="update_notif_title">New NoBby version</string>
+    <string name="update_notif_body">Version %1$s is ready to download.</string>
     <string name="settings_about_body">NoBby is a reminder tool, not medical advice. Follow your product leaflet and ask your doctor or pharmacist when in doubt.</string>
     <string name="settings_licenses">Font licences (OFL)</string>
     <string name="schedule_preview_title">Preview</string>

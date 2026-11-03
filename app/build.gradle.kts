@@ -6,6 +6,10 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+// Release builds pass the version in (-PNOBBY_VERSION_NAME=2.1.0 or env); versionCode = major*10000 + minor*100 + patch.
+val nobbyVersionName: String = (findProperty("NOBBY_VERSION_NAME") as String?) ?: System.getenv("NOBBY_VERSION_NAME") ?: "2.0.0"
+val nobbyVersionCode: Int = ((findProperty("NOBBY_VERSION_CODE") as String?) ?: System.getenv("NOBBY_VERSION_CODE"))?.toIntOrNull() ?: 20000
+
 android {
     namespace = "com.nobby.ring"
     compileSdk = 35
@@ -14,8 +18,8 @@ android {
         applicationId = "com.nobby.ring"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = nobbyVersionCode
+        versionName = nobbyVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
