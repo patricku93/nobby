@@ -60,7 +60,8 @@ fun ScheduleSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hi
             NumberStepper(d.pauseDays, { v -> viewModel.updateDraft { it.copy(pauseDays = v) } }, ScheduleConfig.MIN_PAUSE..ScheduleConfig.MAX_PAUSE, stringResource(R.string.onb_pause_days))
             if (d.pauseWarning) Text(stringResource(R.string.onb_safety_pause), color = MaterialTheme.colorScheme.error)
             TimePickerField(d.timeOfDay, { t -> viewModel.updateDraft { it.copy(timeOfDay = t, anchor = LocalDateTime(it.anchor.date, t)) } }, stringResource(R.string.onb_time_of_day))
-            Text(stringResource(R.string.onb_anchor_title), style = MaterialTheme.typography.titleSmall)
+            // Waiting for the first ring: ask when it will go in. A date up to now turns the schedule into a started one.
+            Text(stringResource(if (d.waitingForFirstRing) R.string.onb_status_new_question else R.string.onb_anchor_title), style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 DatePickerField(d.anchor.date, { date -> viewModel.updateDraft { it.copy(anchor = LocalDateTime(date, it.anchor.time)) } }, stringResource(R.string.onb_anchor_date))
                 TimePickerField(d.anchor.time, { t -> viewModel.updateDraft { it.copy(anchor = LocalDateTime(it.anchor.date, t)) } }, stringResource(R.string.onb_anchor_time))

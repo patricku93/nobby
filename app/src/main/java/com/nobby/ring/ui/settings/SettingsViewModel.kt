@@ -11,6 +11,7 @@ import com.nobby.ring.data.repo.ScheduleRepository
 import com.nobby.ring.di.ApplicationScope
 import com.nobby.ring.domain.engine.ConfigChange
 import com.nobby.ring.domain.engine.ScheduleEngine
+import com.nobby.ring.domain.engine.SetupStart
 import com.nobby.ring.domain.model.EventLog
 import com.nobby.ring.domain.model.Method
 import com.nobby.ring.domain.model.OverdueConfig
@@ -43,21 +44,29 @@ data class ScheduleDraft(
     val horizonMonths: Int,
     /** Not edited on this screen; carried through so Apply does not cancel a pending skip-pause. */
     val skipPauseOnce: Boolean = false,
-    /** Not edited here either: a schedule waiting for its first ring keeps waiting after Apply. */
+    /** Not edited here: a schedule waiting for its first ring keeps waiting after Apply while its start is ahead. */
     val firstInsertPending: Boolean = false,
     /** The saved schedule and log the draft started from, so the preview shows what Apply saves (carried removal). */
     val base: ScheduleConfig? = null,
     val logs: List<EventLog> = emptyList(),
+    /** When the draft started; a waiting start moved to or before it means the ring is in since then. */
+    val now: LocalDateTime? = null,
 ) {
-    fun toConfig(): ScheduleConfig = ScheduleConfig(Method.ring(wearDays, pauseDays, timeOfDay), anchor, horizonMonths, skipPauseOnce, firstInsertPending)
+    fun toConfig(): ScheduleConfig {
+        val config = ScheduleConfig(Method.ring(wearDays, pauseDays, timeOfDay), anchor, horizonMonths, skipPauseOnce, firstInsertPending)
+        return now?.let { SetupStart.startedBy(config, it) } ?: config
+    }
+
+    /** Still waiting for the first ring: the date field asks when it will go in, not when it went in. */
+    val waitingForFirstRing: Boolean get() = toConfig().firstInsertPending
     val preview: List<ScheduledEvent> get() = ScheduleEngine.generate(ConfigChange.resolve(base, toConfig(), logs)).take(4)
     val wearWarning: Boolean get() = wearDays > ScheduleConfig.SAFE_MAX_WEAR
     val pauseWarning: Boolean get() = pauseDays > ScheduleConfig.SAFE_MAX_PAUSE
 
     companion object {
-        fun from(config: ScheduleConfig, logs: List<EventLog> = emptyList()) = ScheduleDraft(
+        fun from(config: ScheduleConfig, logs: List<EventLog> = emptyList(), now: LocalDateTime? = null) = ScheduleDraft(
             config.method.wearDays, config.method.pauseDays, config.method.timeOfDay, config.anchor, config.horizonMonths, config.skipPauseOnce,
-            config.firstInsertPending, base = config, logs = logs,
+            config.firstInsertPending, base = config, logs = logs, now = now,
         )
     }
 }
@@ -89,7 +98,7 @@ class SettingsViewModel @Inject constructor(
 
     fun startScheduleDraft() = viewModelScope.launch {
         val state = scheduleRepo.currentState() ?: return@launch
-        _draft.value = ScheduleDraft.from(state.config, state.logs)
+        _draft.value = ScheduleDraft.from(state.config, state.logs, state.now)
     }
 
     fun updateDraft(transform: (ScheduleDraft) -> ScheduleDraft) = _draft.update { it?.let(transform) }

@@ -70,4 +70,12 @@ object SetupStart {
         if (insert == null || insert.kind != EventKind.INSERT || insert.plannedAt <= now) return SetupPlan.PauseOver
         return SetupPlan.Ready(confirmed.config, confirmed.logs)
     }
+
+    /**
+     * A waiting schedule whose start is not ahead any more is a started one: the ring is in since that time, the same
+     * result as "ring is in" (Settings > Apply, I3). So no "not started" schedule with an overdue first insertion and
+     * no safety check can be saved. At or before [now] counts as past, as in [plan].
+     */
+    fun startedBy(config: ScheduleConfig, now: LocalDateTime): ScheduleConfig =
+        if (config.firstInsertPending && config.anchor <= now) config.copy(firstInsertPending = false) else config
 }

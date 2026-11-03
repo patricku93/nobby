@@ -274,4 +274,25 @@ class ScheduleRepositoryTest {
         assertEquals(EventKind.INSERT, state.nextEvent!!.kind)
         assertNull(state.overdue)
     }
+
+    @Test
+    fun `Apply with a past start on a waiting schedule starts it there`() = runTest {
+        // I3: no "not started" schedule with an overdue first insertion and no safety check can be saved.
+        val method = Method.ring(21, 7, LocalTime(21, 0))
+        repo.updateConfig(ScheduleConfig(method, LocalDateTime(2026, 11, 25, 21, 0), firstInsertPending = true))
+        repo.updateConfig(ScheduleConfig(method, LocalDateTime(2026, 11, 20, 21, 0), firstInsertPending = true))
+        val state = repo.state.filterNotNull().first()
+        assertEquals(false, state.config.firstInsertPending)
+        assertEquals(true, state.position.started)
+        assertEquals(PhaseKind.WEAR, state.position.phase)
+        assertEquals(EventKind.REMOVE, state.nextEvent!!.kind)
+    }
+
+    @Test
+    fun `Apply with a future start keeps the schedule waiting`() = runTest {
+        repo.updateConfig(ScheduleConfig(Method.ring(21, 7, LocalTime(21, 0)), LocalDateTime(2026, 11, 25, 21, 0), firstInsertPending = true))
+        val state = repo.state.filterNotNull().first()
+        assertEquals(true, state.config.firstInsertPending)
+        assertEquals(false, state.position.started)
+    }
 }
