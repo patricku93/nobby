@@ -2,6 +2,7 @@ package com.nobby.ring.ui.calendar
 
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.nobby.ring.data.db.NobbyDatabase
@@ -11,6 +12,7 @@ import com.nobby.ring.data.repo.ScheduleRepository
 import com.nobby.ring.domain.NobbyClock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -27,6 +29,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executor
+import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -48,7 +53,24 @@ class CalendarViewModelTest {
         vm = CalendarViewModel(ScheduleRepository(MethodConfigStore(ds), db.eventLogDao(), clock), NotesRepository(db.noteDao(), clock), clock)
     }
 
-    @After fun tearDown() { Dispatchers.resetMain(); db.close() }
+    @After
+    fun tearDown() {
+        // Stop every ViewModel coroutine (stateIn sharing, debounced note save) and let the cancellations run,
+        // then wait until Room's IO executors are idle. Closing the database while a query is still in flight
+        // on those threads can block close() forever and hang the whole test JVM.
+        vm.viewModelScope.cancel()
+        dispatcher.scheduler.advanceUntilIdle()
+        awaitIdle(db.queryExecutor)
+        awaitIdle(db.transactionExecutor)
+        Dispatchers.resetMain()
+        db.close()
+    }
+
+    private fun awaitIdle(executor: Executor) {
+        val done = CountDownLatch(1)
+        executor.execute { done.countDown() }
+        check(done.await(10, TimeUnit.SECONDS)) { "Room executor did not drain" }
+    }
 
     @Test
     fun `go to today returns to the current month and selects today`() = runTest(dispatcher) {
