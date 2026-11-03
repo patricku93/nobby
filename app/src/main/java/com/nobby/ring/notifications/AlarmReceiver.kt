@@ -57,7 +57,14 @@ class AlarmReceiver : BroadcastReceiver() {
             scheduler.rescheduleAll()
             return
         }
-        notifier.showOverdue(overdue.event.kind, overdue.event.plannedAt, overdue.event.id, overdue.safetyBreached)
+        try {
+            notifier.showOverdue(overdue.event.kind, overdue.event.plannedAt, overdue.event.id, overdue.safetyBreached)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            // The nag chain must survive a failed notification, so log it and still re-arm below.
+            Log.e("NoBby", "showing the overdue notification failed", e)
+        }
         scheduler.armOverdueIn(scheduler.repeatIntervalHours(), overdue.event.id)
         // The widget only refreshes daily on its own; show the overdue state as soon as it begins.
         runCatching { widgetUpdater.updateAll() }.onFailure { e ->

@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Before
 import org.junit.Test
@@ -78,5 +79,33 @@ class NotifierTest {
         val n = shadowOf(context.getSystemService(NotificationManager::class.java)).allNotifications.single()
         assertEquals(R.drawable.ic_stat_nobby, n.smallIcon.resId)
         assertNotNull(n.getLargeIcon())
+    }
+
+    private fun failingNotifier() = Notifier(context, themeStore) { _, _, _ -> throw IllegalStateException("painter failed") }
+
+    @Test
+    fun `overdue still posts with the small icon when the large icon render fails`() = runTest {
+        failingNotifier().showOverdue(EventKind.REMOVE, LocalDateTime(2026, 11, 22, 21, 0), "x", safetyBreached = true)
+        val n = shadowOf(context.getSystemService(NotificationManager::class.java)).allNotifications.single()
+        assertEquals(R.drawable.ic_stat_nobby, n.smallIcon.resId)
+        assertNull(n.getLargeIcon())
+        assertEquals(2, n.actions.size)
+    }
+
+    @Test
+    fun `reminder still posts with the small icon when the large icon render fails`() = runTest {
+        failingNotifier().showReminder(EventKind.REMOVE, LocalDateTime(2026, 11, 22, 21, 0), Importance.NORMAL, "REMOVE@2026-11-22T21:00")
+        val n = shadowOf(context.getSystemService(NotificationManager::class.java)).allNotifications.single()
+        assertEquals(R.drawable.ic_stat_nobby, n.smallIcon.resId)
+        assertNull(n.getLargeIcon())
+    }
+
+    @Test
+    fun `out of memory while rendering the icon does not stop the notification`() = runTest {
+        Notifier(context, themeStore) { _, _, _ -> throw OutOfMemoryError("bitmap") }
+            .showOverdue(EventKind.REMOVE, LocalDateTime(2026, 11, 22, 21, 0), "x", safetyBreached = false)
+        val n = shadowOf(context.getSystemService(NotificationManager::class.java)).allNotifications.single()
+        assertEquals(R.drawable.ic_stat_nobby, n.smallIcon.resId)
+        assertNull(n.getLargeIcon())
     }
 }

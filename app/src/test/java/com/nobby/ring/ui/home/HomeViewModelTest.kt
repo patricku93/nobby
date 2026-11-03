@@ -1,5 +1,4 @@
 package com.nobby.ring.ui.home
-import com.nobby.ring.data.prefs.ThemeStore
 
 import android.app.AlarmManager
 import android.app.NotificationManager
@@ -12,6 +11,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.nobby.ring.data.db.NobbyDatabase
 import com.nobby.ring.data.prefs.MethodConfigStore
 import com.nobby.ring.data.prefs.OverdueConfigStore
+import com.nobby.ring.data.prefs.ThemeStore
 import com.nobby.ring.data.repo.ReminderRepository
 import com.nobby.ring.data.repo.ScheduleRepository
 import com.nobby.ring.domain.NobbyClock

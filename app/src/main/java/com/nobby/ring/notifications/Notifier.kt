@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.util.Log
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.app.NotificationCompat
@@ -23,24 +24,24 @@ import kotlinx.coroutines.flow.first
 import kotlinx.datetime.LocalDateTime
 import javax.inject.Inject
 
-class Notifier @Inject constructor(
-    @ApplicationContext private val context: Context,
+class Notifier internal constructor(
+    private val context: Context,
     private val themeStore: ThemeStore,
+    private val iconRenderer: (Context, Palette, MascotMood) -> Bitmap,
 ) {
+    @Inject constructor(@ApplicationContext context: Context, themeStore: ThemeStore) : this(context, themeStore, NotificationIcons::large)
 
     suspend fun showReminder(kind: EventKind, plannedAt: LocalDateTime, importance: Importance, eventId: String) {
         val palette = palette()
-        val n = NotificationCompat.Builder(context, Channels.idFor(importance))
+        val builder = NotificationCompat.Builder(context, Channels.idFor(importance))
             .setSmallIcon(R.drawable.ic_stat_nobby)
-            .setLargeIcon(NotificationIcons.large(context, palette, MascotMood.HAPPY))
-            .setColor(palette.roles(dark = false).primary.toArgb())
             .setContentTitle(context.getString(R.string.notif_reminder_title, kindLabel(kind)))
             .setContentText(context.getString(R.string.notif_reminder_body, formatDateTime(plannedAt)))
             .setPriority(priorityFor(importance))
             .setContentIntent(openApp())
             .setAutoCancel(true)
-            .build()
-        notify(eventId.hashCode(), n)
+        decorate(builder, palette, MascotMood.HAPPY)
+        notify(eventId.hashCode(), builder.build())
     }
 
     suspend fun showOverdue(kind: EventKind, plannedAt: LocalDateTime, eventId: String, safetyBreached: Boolean) {
@@ -51,8 +52,6 @@ class Notifier @Inject constructor(
         val text = if (safetyBreached) context.getString(R.string.notif_overdue_body_with_safety, body, context.getString(safety)) else body
         val builder = NotificationCompat.Builder(context, Channels.URGENT)
             .setSmallIcon(R.drawable.ic_stat_nobby)
-            .setLargeIcon(NotificationIcons.large(context, palette, MascotMood.WORRIED))
-            .setColor(palette.roles(dark = false).primary.toArgb())
             .setContentTitle(context.getString(R.string.notif_overdue_title, kindLabel(kind)))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
@@ -64,6 +63,7 @@ class Notifier @Inject constructor(
             .addAction(0, context.getString(R.string.home_snooze), action(ActionReceiver.ACTION_SNOOZE, eventId))
         // subText stays visible while the notification is collapsed, unlike the second line of the big text.
         if (safetyBreached) builder.setSubText(context.getString(R.string.notif_overdue_safety_short))
+        decorate(builder, palette, MascotMood.WORRIED)
         notify(OVERDUE_ID, builder.build())
     }
 
@@ -77,6 +77,29 @@ class Notifier @Inject constructor(
     } catch (e: Exception) {
         Log.e("NoBby", "reading the theme for a notification failed", e)
         Palette.BERRY
+    }
+
+    /** The large icon and accent colour are cosmetic: a render or palette failure must never stop the notification posting. */
+    private fun decorate(builder: NotificationCompat.Builder, palette: Palette, mood: MascotMood) {
+        largeIcon(palette, mood)?.let { builder.setLargeIcon(it) }
+        accent(palette)?.let { builder.setColor(it) }
+    }
+
+    private fun largeIcon(palette: Palette, mood: MascotMood): Bitmap? = try {
+        iconRenderer(context, palette, mood)
+    } catch (e: Exception) {
+        Log.e("NoBby", "rendering the notification icon failed", e)
+        null
+    } catch (e: OutOfMemoryError) {
+        Log.e("NoBby", "out of memory rendering the notification icon", e)
+        null
+    }
+
+    private fun accent(palette: Palette): Int? = try {
+        palette.roles(dark = false).primary.toArgb()
+    } catch (e: Exception) {
+        Log.e("NoBby", "deriving the notification colour failed", e)
+        null
     }
 
     private fun notify(id: Int, n: Notification) {
