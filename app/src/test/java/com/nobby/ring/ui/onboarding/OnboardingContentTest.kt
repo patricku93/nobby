@@ -96,6 +96,13 @@ class OnboardingContentTest {
     }
 
     @Test
+    fun `a start that is not ahead any more asks for a later time, not for now`() {
+        show(base.copy(status = SetupStatus.NOT_STARTED, statusIssue = StatusIssue.IN_PAST))
+        compose.onNodeWithText("That's already past. Pick a later time.").performScrollTo().assertExists()
+        compose.onNodeWithText("Next").assertIsNotEnabled()
+    }
+
+    @Test
     fun `a break that is already over says so and asks for the insertion`() {
         show(base.copy(status = SetupStatus.NOT_STARTED, pauseOver = true))
         compose.onNodeWithText("Your break is already over – when will you insert the new ring?").assertExists()

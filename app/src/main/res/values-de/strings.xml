@@ -134,7 +134,7 @@
     <string name="onb_status_new_question">Wann setzt du den neuen Ring ein?</string>
     <string name="onb_status_pause_over">Deine Pause ist schon vorbei – wann setzt du den neuen Ring ein?</string>
     <string name="onb_status_in_future">Das liegt in der Zukunft. Wähl einen Zeitpunkt bis jetzt.</string>
-    <string name="onb_status_in_past">Das liegt in der Vergangenheit. Wähl jetzt oder später.</string>
+    <string name="onb_status_in_past">Das ist schon vorbei. Wähl einen späteren Zeitpunkt.</string>
     <string name="onb_anchor_title">Wann kam der aktuelle Ring rein?</string>
     <string name="onb_anchor_date">Datum</string>
     <string name="onb_anchor_time">Uhrzeit</string>

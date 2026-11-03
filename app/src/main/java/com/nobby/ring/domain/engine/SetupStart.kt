@@ -5,7 +5,6 @@ import com.nobby.ring.domain.model.Method
 import com.nobby.ring.domain.model.ScheduleConfig
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.LocalTime
 import kotlinx.datetime.atTime
 import kotlinx.datetime.minus
 
@@ -40,18 +39,17 @@ sealed interface SetupPlan {
  *   ([ConfirmAction.removeShiftDays]); when the resulting insertion is already past, the pause is over.
  * - Not started, first insertion at [at] (now or later): the schedule waits for that insertion.
  *
- * Times compare at minute precision: [now] is truncated to its minute, as the pickers have no seconds.
+ * Times compare against the real [now], seconds included, the same clock OverdueCalculator uses: an event planned
+ * at or before [now] is already overdue, so a start or insertion has to lie after it (in practice: from the next
+ * minute, as the pickers have no seconds). A past insertion or removal may be up to [now].
  */
 object SetupStart {
 
-    fun plan(status: SetupStatus, method: Method, at: LocalDateTime, now: LocalDateTime): SetupPlan {
-        val minute = LocalDateTime(now.date, LocalTime(now.hour, now.minute))
-        return when (status) {
-            SetupStatus.RING_IN -> if (at > minute) SetupPlan.InFuture else SetupPlan.Ready(ScheduleConfig(method, at))
-            SetupStatus.RING_OUT -> if (at > minute) SetupPlan.InFuture else ringOut(method, at, minute)
-            SetupStatus.NOT_STARTED ->
-                if (at < minute) SetupPlan.InPast else SetupPlan.Ready(ScheduleConfig(method, at, firstInsertPending = true))
-        }
+    fun plan(status: SetupStatus, method: Method, at: LocalDateTime, now: LocalDateTime): SetupPlan = when (status) {
+        SetupStatus.RING_IN -> if (at > now) SetupPlan.InFuture else SetupPlan.Ready(ScheduleConfig(method, at))
+        SetupStatus.RING_OUT -> if (at > now) SetupPlan.InFuture else ringOut(method, at, now)
+        SetupStatus.NOT_STARTED ->
+            if (at <= now) SetupPlan.InPast else SetupPlan.Ready(ScheduleConfig(method, at, firstInsertPending = true))
     }
 
     private fun ringOut(method: Method, removedAt: LocalDateTime, now: LocalDateTime): SetupPlan {
@@ -63,7 +61,7 @@ object SetupStart {
         val policy = ConfirmAction.quickConfirmPolicy(remove, removedAt)
         val confirmed = ConfirmAction.confirm(config, remove, emptyList(), removedAt, policy)
         val insert = OverdueCalculator.nextPending(ScheduleEngine.generate(confirmed.config), confirmed.logs)
-        if (insert == null || insert.kind != EventKind.INSERT || insert.plannedAt < now) return SetupPlan.PauseOver
+        if (insert == null || insert.kind != EventKind.INSERT || insert.plannedAt <= now) return SetupPlan.PauseOver
         return SetupPlan.Ready(config, SetupRemoval(remove.id, removedAt, policy))
     }
 }

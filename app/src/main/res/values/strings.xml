@@ -134,7 +134,7 @@
     <string name="onb_status_new_question">When will you insert the new ring?</string>
     <string name="onb_status_pause_over">Your break is already over – when will you insert the new ring?</string>
     <string name="onb_status_in_future">That\'s in the future. Pick a time up to now.</string>
-    <string name="onb_status_in_past">That\'s in the past. Pick now or later.</string>
+    <string name="onb_status_in_past">That\'s already past. Pick a later time.</string>
     <string name="onb_anchor_title">When did the current ring go in?</string>
     <string name="onb_anchor_date">Date</string>
     <string name="onb_anchor_time">Time</string>

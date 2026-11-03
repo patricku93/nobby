@@ -83,11 +83,18 @@ class SetupStartTest {
     }
 
     @Test
-    fun `ring out exactly one pause ago is still a pause with the insertion due now`() {
-        val at = LocalDateTime(2026, 11, 3, 21, 0)
+    fun `ring out whose insertion falls on the current minute is over, not due with its seconds already past`() {
+        // I2: the clock has seconds; an insertion at 21:00:00 is already behind 21:00:37, so it would be overdue at once.
+        val at = LocalDateTime(2026, 11, 3, 21, 0, 37)
+        assertEquals(SetupPlan.PauseOver, SetupStart.plan(SetupStatus.RING_OUT, method, LocalDateTime(2026, 10, 27, 21, 0), at))
+    }
+
+    @Test
+    fun `ring out one pause ago with the insertion still ahead is a pause`() {
+        val at = LocalDateTime(2026, 11, 3, 20, 59, 59)
         val plan = ready(SetupStart.plan(SetupStatus.RING_OUT, method, LocalDateTime(2026, 10, 27, 21, 0), at))
         val insert = ScheduleEngine.generate(saved(plan).config).first { it.kind == EventKind.INSERT }
-        assertEquals(at, insert.plannedAt)
+        assertEquals(LocalDateTime(2026, 11, 3, 21, 0), insert.plannedAt)
     }
 
     @Test
@@ -122,9 +129,11 @@ class SetupStartTest {
     }
 
     @Test
-    fun `not started in the past is rejected, the current minute is fine`() {
+    fun `not started in the past or at the current minute is rejected, the next minute is fine`() {
         assertEquals(SetupPlan.InPast, SetupStart.plan(SetupStatus.NOT_STARTED, method, LocalDateTime(2026, 11, 3, 9, 59), now))
         assertEquals(SetupPlan.InPast, SetupStart.plan(SetupStatus.NOT_STARTED, method, LocalDateTime(2026, 11, 2, 21, 0), now))
-        assertTrue(SetupStart.plan(SetupStatus.NOT_STARTED, method, LocalDateTime(2026, 11, 3, 10, 0), now) is SetupPlan.Ready)
+        // I2: 10:00 is already behind 10:00:30, so that start would be overdue right after setup.
+        assertEquals(SetupPlan.InPast, SetupStart.plan(SetupStatus.NOT_STARTED, method, LocalDateTime(2026, 11, 3, 10, 0), now))
+        assertTrue(SetupStart.plan(SetupStatus.NOT_STARTED, method, LocalDateTime(2026, 11, 3, 10, 1), now) is SetupPlan.Ready)
     }
 }

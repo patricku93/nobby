@@ -193,17 +193,43 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun `ring out exactly one pause ago is due now, not overdue`() = runTest(dispatcher) {
-        nowValue = LocalDateTime(2026, 11, 5, 21, 0)
+    fun `ring out whose insertion is the current minute counts as over, never overdue right away`() = runTest(dispatcher) {
+        nowValue = LocalDateTime(2026, 11, 5, 21, 0, 37)
         val vm = vm()
         vm.answer(SetupStatus.RING_OUT, LocalDateTime(2026, 10, 29, 21, 0))
         vm.next()
-        assertEquals(1, vm.state.value.step)
+        assertEquals(0, vm.state.value.step)
+        assertTrue(vm.state.value.pauseOver)
+    }
+
+    @Test
+    fun `not started at the current minute with seconds on the clock is rejected`() {
+        nowValue = LocalDateTime(2026, 11, 3, 17, 25, 37)
+        val vm = vm()
+        vm.answer(SetupStatus.NOT_STARTED, LocalDateTime(2026, 11, 3, 17, 25))
+        assertEquals(StatusIssue.IN_PAST, vm.state.value.statusIssue)
+        assertFalse(vm.state.value.canNext)
+    }
+
+    @Test
+    fun `not started at the next minute is not overdue right after finishing`() = runTest(dispatcher) {
+        nowValue = LocalDateTime(2026, 11, 3, 17, 25, 37)
+        val vm = vm()
+        val start = LocalDateTime(2026, 11, 3, 17, 26)
+        vm.answer(SetupStatus.NOT_STARTED, start)
         val s = vm.finishAndLoad()
-        assertEquals(EventKind.INSERT, s.nextEvent!!.kind)
-        assertEquals(nowValue, s.nextEvent!!.plannedAt)
-        assertEquals(0, s.daysUntilNext)
         assertNull(s.overdue)
+        assertEquals(start, s.nextEvent!!.plannedAt)
+        assertTrue(overdueAlarmAt()!! > millis(nowValue))
+    }
+
+    @Test
+    fun `the not-started default skips today when the routine time is now`() {
+        nowValue = LocalDateTime(2026, 11, 3, 21, 0)
+        val vm = vm()
+        vm.setStatus(SetupStatus.NOT_STARTED)
+        assertNull(vm.state.value.statusIssue)
+        assertEquals(LocalDate(2026, 11, 4), vm.state.value.statusDate)
     }
 
     @Test

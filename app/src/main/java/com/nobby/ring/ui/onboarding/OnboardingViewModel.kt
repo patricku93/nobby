@@ -156,13 +156,13 @@ class OnboardingViewModel @Inject constructor(
 
     /**
      * Routine time today, moved a day back for "in" / "out" when that is still ahead, or a day on for "not started"
-     * when it has already passed, so the preset answer is always a valid one.
+     * when it is not ahead any more, so the preset answer is always a valid one.
      */
     private fun withDefaults(s: OnboardingState): OnboardingState {
         val now = clock.now()
         val today = now.date.atTime(s.timeOfDay)
         val at = when (s.status) {
-            SetupStatus.NOT_STARTED -> if (today < now) today.date.plus(1, DateTimeUnit.DAY).atTime(s.timeOfDay) else today
+            SetupStatus.NOT_STARTED -> if (today <= now) today.date.plus(1, DateTimeUnit.DAY).atTime(s.timeOfDay) else today
             else -> if (today > now) today.date.minus(1, DateTimeUnit.DAY).atTime(s.timeOfDay) else today
         }
         return s.copy(statusDate = at.date, statusTime = at.time)
