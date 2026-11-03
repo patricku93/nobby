@@ -64,6 +64,7 @@ import com.nobby.ring.ui.components.EventCard
 import com.nobby.ring.ui.components.RingProgress
 import com.nobby.ring.ui.components.formatDateTime
 import com.nobby.ring.ui.components.label
+import com.nobby.ring.ui.theme.NobbyType
 import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -199,7 +200,7 @@ private fun Countdown(state: ScheduleState, compact: Boolean) {
         progressColor = if (overdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            if (days != 0) Text("${abs(days)}", style = MaterialTheme.typography.displayLarge, color = MaterialTheme.colorScheme.primary)
+            if (days != 0) Text("${abs(days)}", style = NobbyType.countdown, color = MaterialTheme.colorScheme.primary)
             Text(label, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         }
     }
