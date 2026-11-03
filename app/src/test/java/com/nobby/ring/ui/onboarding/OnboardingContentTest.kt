@@ -29,6 +29,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
@@ -84,7 +85,8 @@ class OnboardingContentTest {
         state.value = base.copy(status = SetupStatus.RING_OUT)
         compose.onNodeWithText("When did you take it out?").assertExists()
         state.value = base.copy(status = SetupStatus.NOT_STARTED)
-        compose.onNodeWithText("When will you insert the new ring?").assertExists()
+        compose.onNodeWithText("When will you insert the first ring?").assertExists()
+        compose.onNodeWithText("When will you insert the new ring?").assertDoesNotExist()
         compose.onNodeWithText("Next").assertIsEnabled().performClick()
         assertEquals(1, next)
     }
@@ -108,6 +110,7 @@ class OnboardingContentTest {
         show(base.copy(status = SetupStatus.NOT_STARTED, removedAt = LocalDateTime(2026, 10, 30, 21, 0)))
         compose.onNodeWithText("Your break is already over – when will you insert the new ring?").assertExists()
         compose.onNodeWithText("When will you insert the new ring?").performScrollTo().assertExists()
+        compose.onNodeWithText("When will you insert the first ring?").assertDoesNotExist()
     }
 
     @Test
@@ -142,5 +145,22 @@ class OnboardingContentTest {
     fun `a break within 7 days shows no protection hint`() {
         show(base.copy(status = SetupStatus.NOT_STARTED, removedAt = LocalDateTime(2026, 10, 30, 21, 0)))
         compose.onNodeWithText("By then the ring", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "de")
+    fun `DE asks a first-time user for the first ring`() {
+        show(base.copy(status = SetupStatus.NOT_STARTED))
+        compose.onNodeWithText("Wann setzt du den ersten Ring ein?").assertExists()
+        compose.onNodeWithText("Wann setzt du den neuen Ring ein?").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "de")
+    fun `DE asks for the new ring only after the pause-over notice`() {
+        show(base.copy(status = SetupStatus.NOT_STARTED, removedAt = LocalDateTime(2026, 10, 30, 21, 0)))
+        compose.onNodeWithText("Deine Pause ist schon vorbei – wann setzt du den neuen Ring ein?").assertExists()
+        compose.onNodeWithText("Wann setzt du den neuen Ring ein?").performScrollTo().assertExists()
+        compose.onNodeWithText("Wann setzt du den ersten Ring ein?").assertDoesNotExist()
     }
 }

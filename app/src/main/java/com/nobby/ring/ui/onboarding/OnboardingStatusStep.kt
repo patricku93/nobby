@@ -39,7 +39,7 @@ internal fun StatusStep(state: OnboardingState, actions: OnboardingActions) {
     val status = state.status ?: return
     if (state.pauseOver) InfoNote(stringResource(R.string.onb_status_pause_over))
     NobbyCard {
-        Text(stringResource(questionFor(status)), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(questionFor(status, state.pauseOver)), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(12.dp))
         DatePickerField(state.statusDate, actions.onStatusDate, stringResource(R.string.onb_anchor_date), Modifier.fillMaxWidth())
         Spacer(Modifier.height(12.dp))
@@ -84,8 +84,9 @@ private fun labelFor(status: SetupStatus): Int = when (status) {
     SetupStatus.NOT_STARTED -> R.string.onb_status_new
 }
 
-private fun questionFor(status: SetupStatus): Int = when (status) {
+/** "Not started" asks for the first ring; after the pause-over notice it asks for the new one. */
+private fun questionFor(status: SetupStatus, pauseOver: Boolean): Int = when (status) {
     SetupStatus.RING_IN -> R.string.onb_status_in_question
     SetupStatus.RING_OUT -> R.string.onb_status_out_question
-    SetupStatus.NOT_STARTED -> R.string.onb_status_new_question
+    SetupStatus.NOT_STARTED -> if (pauseOver) R.string.onb_status_restart_question else R.string.onb_status_new_question
 }
